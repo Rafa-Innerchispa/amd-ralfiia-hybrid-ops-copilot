@@ -1,0 +1,10 @@
+[
+  {
+    "task_id": "demo-001",
+    "prompt": "Classify sentiment: The AMD Instinct GPU performed excellently today."
+  },
+  {
+    "task_id": "demo-002",
+    "prompt": "Debug this Python matrix algorithm for eigenvalue decomposition."
+  }
+]

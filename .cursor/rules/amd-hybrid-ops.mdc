@@ -1,0 +1,12 @@
+---
+description: AMD Hackathon — workspace aislado amd-ralfiia-hybrid-ops-copilot
+globs: ["**/*"]
+---
+
+# Reglas proyecto AMD RalfIIA Hybrid Ops
+
+- Path único: `/home/rlopez/projects/amd-ralfiia-hybrid-ops-copilot`
+- Puertos: 8220 gateway, 5120 UI, 8221 quoter, 8222 watchdog
+- Protocolo Google A2A obligatorio entre agentes
+- No tocar servicios RalfIA core (8101, 8102, 8097-8100)
+- Secretos solo en `.env`

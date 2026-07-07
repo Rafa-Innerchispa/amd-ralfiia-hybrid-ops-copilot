@@ -1,0 +1,89 @@
+version: "3.9"
+
+# RalfIIA Hybrid Ops Copilot — AMD ACT II Track 1 + Track 3
+
+services:
+  root-gateway:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ralfiia_root_gateway
+    ports:
+      - "8220:8220"
+    env_file:
+      - .env
+    environment:
+      ROOT_GATEWAY_PORT: "8220"
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+      MONGO_URI: "mongodb://host.docker.internal:27017"
+      SMART_QUOTER_AGENT_URL: "http://agent-smart-quoter:8221"
+      WATCHDOG_AGENT_URL: "http://agent-watchdog:8222"
+      SMART_QUOTER_URL: "http://host.docker.internal:2026"
+      PUBLIC_NGROK_BASE: "https://sworn-profusely-alongside.ngrok-free.dev"
+      HARNESS_INPUT_PATH: "/input/tasks.json"
+      HARNESS_OUTPUT_PATH: "/output/results.json"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./input:/input:ro
+      - ./output:/output
+    depends_on:
+      agent-smart-quoter:
+        condition: service_started
+      agent-watchdog:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8220/health"]
+      interval: 20s
+      timeout: 8s
+      retries: 3
+
+  agent-smart-quoter:
+    build:
+      context: .
+      dockerfile: agent_smart_quoter/Dockerfile
+    container_name: ralfiia_agent_smart_quoter
+    ports:
+      - "8221:8221"
+    env_file:
+      - .env
+    environment:
+      AGENT_PORT: "8221"
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+      MONGO_URI: "mongodb://host.docker.internal:27017"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  agent-watchdog:
+    build:
+      context: .
+      dockerfile: agent_watchdog/Dockerfile
+    container_name: ralfiia_agent_watchdog
+    ports:
+      - "8222:8222"
+    env_file:
+      - .env
+    environment:
+      AGENT_PORT: "8222"
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: ralfiia_amd_ui
+    ports:
+      - "5120:80"
+    depends_on:
+      root-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: ralfiia_hybrid_ops_net

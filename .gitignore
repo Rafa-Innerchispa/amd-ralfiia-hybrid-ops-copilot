@@ -1,0 +1,15 @@
+.env
+.env.local
+*.pyc
+__pycache__/
+.venv/
+venv/
+node_modules/
+*.log
+.DS_Store
+output/*.json
+backend/.venv/
+agent_smart_quoter/.venv/
+agent_watchdog/.venv/
+track1_agent/.venv/
+track2_agent/.venv/

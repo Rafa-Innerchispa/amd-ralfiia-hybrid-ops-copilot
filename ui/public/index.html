@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RalfIIA Hybrid Ops — AMD Console</title>
+  <style>
+    :root {
+      --bg: #080808; --panel: #121212; --border: #2a2a2a;
+      --text: #f0f0f0; --muted: #888; --dim: #555;
+      --white: #fff; --green: #4ade80; --amber: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; }
+    header h1 { font-size: .85rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+    .sub { color: var(--muted); font-size: .72rem; margin-top: .2rem; }
+    .dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 6px; animation: blink 2s infinite; }
+    @keyframes blink { 50% { opacity: .3; } }
+    #banner { padding: .45rem 1.5rem; font-size: .72rem; border-bottom: 1px solid var(--border); background: #1a1510; color: var(--amber); }
+    main { display: grid; grid-template-columns: 340px 1fr 360px; gap: 1px; background: var(--border); min-height: calc(100vh - 100px); }
+    @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); padding: 1rem; }
+    .panel h2 { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .75rem; }
+    .metric .v { font-size: 1.6rem; font-weight: 300; }
+    .metric .l { font-size: .68rem; color: var(--dim); margin-top: .15rem; margin-bottom: .9rem; }
+    .bar { height: 3px; background: var(--border); margin: .5rem 0 1rem; display: flex; }
+    .bar .loc { background: var(--muted); height: 100%; }
+    .bar .rem { background: var(--white); height: 100%; }
+    .card { border: 1px solid var(--border); padding: .6rem .75rem; margin-bottom: .45rem; background: var(--bg); font-size: .78rem; }
+    .card .ok { color: var(--green); font-size: .65rem; }
+    .card .bad { color: var(--muted); font-size: .65rem; }
+    .btns { display: flex; flex-direction: column; gap: .4rem; margin: .75rem 0; }
+    button, .link-btn {
+      background: var(--white); color: var(--bg); border: none; padding: .55rem .75rem;
+      font-size: .72rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: block;
+    }
+    button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: .6rem; font-family: inherit; font-size: .8rem; resize: vertical; min-height: 70px;
+    }
+    .terminal {
+      background: var(--bg); border: 1px solid var(--border); font-family: ui-monospace, monospace;
+      font-size: .68rem; line-height: 1.55; padding: .6rem; max-height: 42vh; overflow-y: auto; color: var(--muted);
+    }
+    .terminal .ev { padding: .25rem 0; border-bottom: 1px solid #151515; }
+    .terminal .hi { color: var(--white); }
+    .answer-box {
+      margin-top: .75rem; padding: .75rem; border: 1px solid var(--border); background: var(--bg);
+      font-size: .78rem; line-height: 1.5; white-space: pre-wrap; max-height: 200px; overflow-y: auto;
+    }
+    .url-box { font-size: .65rem; color: var(--dim); word-break: break-all; margin-top: .5rem; padding: .4rem; background: var(--bg); border: 1px solid var(--border); }
+    footer { grid-column: 1/-1; padding: .6rem 1.5rem; font-size: .62rem; color: var(--dim); background: var(--panel); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1><span class="dot"></span>RalfIIA Hybrid Ops Copilot</h1>
+      <div class="sub">AMD ACT II · Track 3 Unicorn + Track 1 Router · A2A Mesh</div>
+    </div>
+    <div id="clock" style="font-size:.72rem;color:var(--muted)"></div>
+  </header>
+  <div id="banner">Inicializando…</div>
+  <main>
+    <section class="panel">
+      <h2>Token economics (Track 1)</h2>
+      <div class="metric"><div class="v" id="tokLocal">0</div><div class="l">Local Ollama — AMD score 0</div></div>
+      <div class="metric"><div class="v" id="tokRemote">0</div><div class="l">Remote Fireworks / Gemma</div></div>
+      <div class="bar"><div class="loc" id="barLocal" style="width:50%"></div><div class="rem" id="barRemote" style="width:50%"></div></div>
+      <div class="metric"><div class="v" id="txnCount">0</div><div class="l">Transacciones Mongo</div></div>
+      <h2>Demo rápido (jurado)</h2>
+      <div class="btns">
+        <button type="button" id="btnShowcase">▶ Demo completa automática</button>
+        <button type="button" class="secondary" data-msg="Clasifica sentiment: el servicio PC Doctor fue excelente hoy">Sentiment → Ollama local</button>
+        <button type="button" class="secondary" data-msg="Cotizar diagnóstico onsite + SSD 1TB para cliente PC Doctor">Cotización → A2A Quoter</button>
+        <button type="button" class="secondary" data-msg="Health check containers ralfiia stack and remediation">SRE → Watchdog</button>
+        <button type="button" class="secondary" data-msg="Debug matrix eigenvalue algorithm in Python">Complejo → Fireworks*</button>
+      </div>
+      <p style="font-size:.62rem;color:var(--dim)">* Fireworks activo cuando pegues API key en .env</p>
+      <h2>URLs jurado</h2>
+      <div class="url-box" id="juryUrl">—</div>
+    </section>
+
+    <section class="panel">
+      <h2>Copilot interactivo</h2>
+      <textarea id="input" placeholder="Escribe consulta ops, cotización o análisis…"></textarea>
+      <div style="margin-top:.5rem;display:flex;gap:.4rem">
+        <button type="button" id="send" style="flex:1">Enviar al Root Agent</button>
+      </div>
+      <div class="answer-box" id="answer">Respuesta aparecerá aquí…</div>
+    </section>
+
+    <section class="panel">
+      <h2>Agent Cards (A2A)</h2>
+      <div id="agentCards"></div>
+      <h2 style="margin-top:1rem">Routing log</h2>
+      <div class="terminal" id="terminal"></div>
+    </section>
+    <footer>Smart Quoter :2026 · Panel :2002 · Mongo pcdoctor_swarm · ngrok AMD ops</footer>
+  </main>
+  <script>
+    const term = document.getElementById("terminal");
+    const answerEl = document.getElementById("answer");
+    const seen = new Set();
+
+    function api() {
+      const p = location.pathname;
+      if (p.includes("/amd-ops") && !p.includes("/amd-ops-api")) return "/amd-ops-api";
+      if (p.startsWith("/console")) return "";
+      return "";
+    }
+
+    function log(msg, hi) {
+      const k = msg.slice(0, 60);
+      if (seen.has(k)) return;
+      seen.add(k);
+      const d = document.createElement("div");
+      d.className = "ev" + (hi ? " hi" : "");
+      d.textContent = `[${new Date().toLocaleTimeString("es-EC",{hour12:false})}] ${msg}`;
+      term.prepend(d);
+      while (term.children.length > 60) term.removeChild(term.lastChild);
+    }
+
+    async function jfetch(path, opts) {
+      const r = await fetch(api() + path, opts);
+      if (!r.ok) throw new Error(path + " → HTTP " + r.status);
+      return r.json();
+    }
+
+    async function sendChat(text) {
+      if (!text.trim()) return;
+      answerEl.textContent = "Procesando…";
+      log("USER: " + text.slice(0, 80));
+      try {
+        const d = await jfetch("/api/v1/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+        const content = d.result?.content || d.result?.message || JSON.stringify(d.result || d.error || d, null, 2);
+        answerEl.textContent = content;
+        const meta = d.result?.metadata || {};
+        if (meta.routing_label) log(meta.routing_label, true);
+        else log("Delegación A2A completada · session " + d.session_id, true);
+      } catch (e) {
+        answerEl.textContent = "Error: " + e.message;
+        log("ERROR chat: " + e.message);
+      }
+    }
+
+    async function poll() {
+      try {
+        const [stats, cred, svc, ev, txns] = await Promise.all([
+          jfetch("/api/v1/routing/stats"),
+          jfetch("/api/v1/credits/status"),
+          jfetch("/services"),
+          jfetch("/events?limit=20"),
+          jfetch("/api/v1/transactions?limit=5"),
+        ]);
+        document.getElementById("tokLocal").textContent = stats.tokens_local ?? 0;
+        document.getElementById("tokRemote").textContent = stats.tokens_remote ?? 0;
+        document.getElementById("txnCount").textContent = stats.total_transactions ?? 0;
+        const tot = (stats.tokens_local||0)+(stats.tokens_remote||0)||1;
+        document.getElementById("barLocal").style.width = ((stats.tokens_local||0)/tot*100)+"%";
+        document.getElementById("barRemote").style.width = ((stats.tokens_remote||0)/tot*100)+"%";
+
+        const fw = cred.fireworks || {};
+        const sq = cred.smart_quoter_live?.ok ? "Smart Quoter LIVE :2026" : "Smart Quoter offline";
+        document.getElementById("banner").textContent = fw.configured
+          ? "✓ Fireworks configurado · " + sq
+          : "Modo demo: Ollama local (0 tokens) · Fireworks pendiente créditos AMD · " + sq;
+
+        const ng = cred.ngrok || {};
+        document.getElementById("juryUrl").textContent = (ng.ui || "") + " · API: " + (ng.api || "");
+
+        const cards = document.getElementById("agentCards");
+        cards.innerHTML = "";
+        (svc.services || []).forEach(s => {
+          const el = document.createElement("div");
+          el.className = "card";
+          el.innerHTML = `<strong>${s.name}</strong><br><span class="${s.status==="online"?"ok":"bad"}">${(s.status||"?").toUpperCase()}</span>`;
+          cards.appendChild(el);
+        });
+
+        (ev.events || []).slice(0, 3).forEach(e => log((e.type||"event") + " · " + (e.agent||e.data?.target_agent||"")));
+      } catch (e) {
+        document.getElementById("banner").textContent = "Backend no alcanzable — ¿correr scripts/start_all.sh?";
+      }
+    }
+
+    document.getElementById("send").onclick = () => sendChat(document.getElementById("input").value);
+    document.getElementById("input").addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(document.getElementById("input").value); }
+    });
+    document.querySelectorAll("[data-msg]").forEach(b => {
+      b.onclick = () => { document.getElementById("input").value = b.dataset.msg; sendChat(b.dataset.msg); };
+    });
+    document.getElementById("btnShowcase").onclick = async () => {
+      const btn = document.getElementById("btnShowcase");
+      btn.disabled = true;
+      try {
+        const d = await jfetch("/api/v1/demo/showcase", { method: "POST" });
+        log("SHOWCASE: " + d.summary, true);
+        answerEl.textContent = d.summary + "\n\n" + (d.last_answer || "");
+      } catch (e) { log("Showcase error: " + e.message); }
+      btn.disabled = false;
+    };
+
+    setInterval(() => document.getElementById("clock").textContent = new Date().toLocaleString("es-EC"), 1000);
+    poll();
+    setInterval(poll, 3000);
+  </script>
+</body>
+</html>
