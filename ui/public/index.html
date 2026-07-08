@@ -117,6 +117,7 @@
       <span class="pill" id="pillFw">fireworks …</span>
       <button type="button" class="lang-btn active" id="langEs">ES</button>
       <button type="button" class="lang-btn" id="langEn">EN</button>
+      <button type="button" class="lang-btn" id="btnNotifyGemma" style="border-color: var(--amber); color: var(--amber); font-weight: bold;">🔔 NOTIFY GEMMA GPU</button>
       <a class="pill github" id="githubLink" href="https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot" target="_blank" rel="noopener">GitHub ↗</a>
       <span id="clock" style="font-size:.68rem;color:var(--muted)"></span>
     </div>
@@ -719,6 +720,26 @@
 
     document.getElementById("langEs").onclick = () => { lang = "es"; applyLang(); renderScenarios(); };
     document.getElementById("langEn").onclick = () => { lang = "en"; applyLang(); renderScenarios(); };
+    
+    document.getElementById("btnNotifyGemma").onclick = async () => {
+      const btn = document.getElementById("btnNotifyGemma");
+      btn.disabled = true;
+      btn.textContent = lang === "es" ? "Enviando alerta..." : "Sending alert...";
+      try {
+        const r = await fetch("/api/v1/notify-gemma", { method: "POST" });
+        const res = await r.json();
+        if (res.ok) {
+          alert(lang === "es" ? "¡Alerta enviada exitosamente por WhatsApp a Rafael!" : "Alert successfully sent to Rafael via WhatsApp!");
+        } else {
+          alert("Error: " + (res.error || "unknown error"));
+        }
+      } catch (e) {
+        alert("Network error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = lang === "es" ? "🔔 NOTIFICAR GEMMA GPU" : "🔔 NOTIFY GEMMA GPU";
+      }
+    };
     function presetMsg(btn) {
       return lang === "en" ? (btn.dataset.msgEn || btn.dataset.msgEs) : (btn.dataset.msgEs || btn.dataset.msgEn);
     }

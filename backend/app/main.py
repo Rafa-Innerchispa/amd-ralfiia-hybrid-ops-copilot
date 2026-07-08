@@ -223,6 +223,36 @@ async def runtime_providers():
     }
 
 
+@app.post("/api/v1/notify-gemma")
+async def notify_gemma_activation():
+    """Trigger WhatsApp alert via Evolution API when a judge needs Gemma GPU activated."""
+    evo_base = "http://192.168.1.4:8082"
+    evo_key = "swarm_os_evolution_key_2026"
+    evo_inst = "RalphiIA-pcdoctor"
+    dest_number = "593999059000"
+    
+    text = (
+        "🚨 *Alerta AMD Hackathon*: Un evaluador está probando la aplicación y requiere activar "
+        "el modelo Gemma en la GPU de AMD (Jupyter Server).\n\n"
+        "Por favor, enciende la instancia de Jupyter y levanta el servicio vLLM/Gemma.\n"
+        "Jupyter URL: https://radeon-global.anruicloud.com/instances/hf-129-3b565f68/lab"
+    )
+    
+    url = f"{evo_base}/message/sendText/{evo_inst}"
+    headers = {"apikey": evo_key, "Content-Type": "application/json"}
+    payload = {"number": dest_number, "text": text, "delay": 800}
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, headers=headers, timeout=15.0)
+            if r.status_code in (200, 201):
+                return {"ok": True, "message": "Notification sent successfully via WhatsApp!"}
+            return {"ok": False, "error": f"HTTP {r.status_code}: {r.text}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # --- Track 3: A2A mesh + demo integrado ---
 
 
