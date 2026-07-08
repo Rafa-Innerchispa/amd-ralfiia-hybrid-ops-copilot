@@ -18,6 +18,7 @@ import httpx
 from app.settings import settings
 from shared.runtime_i18n import (
     format_fireworks_result,
+    format_amd_cloud_result,
     format_routing_label,
     format_sentiment_result,
     is_sentiment_prompt,
@@ -137,22 +138,49 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es") -> di
     lang = normalize_lang(lang)
     async with httpx.AsyncClient() as client:
         if is_complex_task(prompt):
-            answer, engine = await run_fireworks_remote(client, prompt)
-            model_path = resolve_complex_model()
-            answer = format_fireworks_result(answer, model_path, lang)
-            meta_extra: dict[str, Any] = {
-                "routing": "fireworks",
-                "provider_id": "fireworks_cloud",
-                "tokens_remote": 1,
-                "model": model_path,
-                "routing_label": format_routing_label(
-                    runtime="fireworks_cloud",
-                    provider_id="fireworks_cloud",
-                    model=model_path,
-                    ollama_url=None,
-                    lang=lang,
-                ),
-            }
+            is_cloud_vllm = False
+            if settings.amd_inference_base_url:
+                try:
+                    from app.amd_cloud_client import chat_inference
+                    res = await chat_inference(prompt)
+                    if res.get("ok"):
+                        answer = res["content"]
+                        model_path = res.get("model") or settings.amd_inference_model
+                        answer = format_amd_cloud_result(answer, model_path, lang)
+                        engine = f"AMD Cloud vLLM ({model_path})"
+                        is_cloud_vllm = True
+                        meta_extra = {
+                            "routing": "amd_cloud",
+                            "provider_id": "amd_cloud",
+                            "tokens_remote": 1,
+                            "model": model_path,
+                            "routing_label": format_routing_label(
+                                runtime="amd_cloud",
+                                provider_id="amd_cloud",
+                                model=model_path,
+                                ollama_url=None,
+                                lang=lang,
+                            ),
+                        }
+                except Exception:
+                    pass
+            if not is_cloud_vllm:
+                answer, engine = await run_fireworks_remote(client, prompt)
+                model_path = resolve_complex_model()
+                answer = format_fireworks_result(answer, model_path, lang)
+                meta_extra = {
+                    "routing": "fireworks",
+                    "provider_id": "fireworks_cloud",
+                    "tokens_remote": 1,
+                    "model": model_path,
+                    "routing_label": format_routing_label(
+                        runtime="fireworks_cloud",
+                        provider_id="fireworks_cloud",
+                        model=model_path,
+                        ollama_url=None,
+                        lang=lang,
+                    ),
+                }
         else:
             answer, engine, local_meta = await run_local_ollama(client, prompt)
             if is_sentiment_prompt(prompt):

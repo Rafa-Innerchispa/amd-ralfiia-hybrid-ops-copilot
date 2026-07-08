@@ -96,6 +96,28 @@ def format_fireworks_result(answer: str, model_path: str, lang: Lang) -> str:
     )
 
 
+def format_amd_cloud_result(answer: str, model_path: str, lang: Lang) -> str:
+    if lang == "en":
+        return (
+            "=== COMPLEX TASK RESULT (AMD DEVELOPER CLOUD) ===\n\n"
+            f"{answer}\n\n"
+            "Infrastructure:\n"
+            f"  • Engine: AMD Developer Cloud (vLLM / GPU droplet)\n"
+            f"  • Model: {model_path}\n"
+            "  • Local Ollama: not used\n"
+            "  • Fireworks Cloud: not used"
+        )
+    return (
+        "=== RESULTADO TAREA COMPLEJA (AMD DEVELOPER CLOUD) ===\n\n"
+        f"{answer}\n\n"
+        "Infraestructura:\n"
+        f"  • Motor: AMD Developer Cloud (vLLM / droplet GPU)\n"
+        f"  • Modelo: {model_path}\n"
+        "  • Ollama local: no se usa\n"
+        "  • Inferencia Fireworks: no se usa"
+    )
+
+
 def format_routing_label(
     *,
     runtime: str,
@@ -104,6 +126,10 @@ def format_routing_label(
     ollama_url: str | None,
     lang: Lang,
 ) -> str:
+    if runtime == "amd_cloud" or provider_id == "amd_cloud":
+        if lang == "en":
+            return f"AMD Cloud vLLM (AMD GPU) — {model}"
+        return f"AMD Cloud vLLM (GPUs AMD) — {model}"
     if runtime == "fireworks_cloud" or provider_id == "fireworks_cloud":
         if lang == "en":
             return f"Fireworks cloud (AMD GPU) — {model}"

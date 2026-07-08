@@ -1,0 +1,9 @@
+{
+
+  "python.defaultInterpreterPath": "/home/rlopez/projects/amd-ralfiia-hybrid-ops-copilot/backend/.venv/bin/python",
+
+  "python.envFile": "${workspaceFolder}/.env",
+
+  "python.terminal.useEnvFile": true
+
+}
