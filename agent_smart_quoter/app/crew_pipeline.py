@@ -7,7 +7,9 @@ import uuid
 from typing import Any
 
 from app.hybrid_router import hybrid_route
+from app.settings import settings
 from shared.a2a_protocol import Order, OrderItem, ResponseFormat
+from shared.runtime_i18n import format_quote_routing_note, normalize_lang
 
 TECH_MENU = """
 Servicios PC Doctor:
@@ -59,8 +61,9 @@ def build_quote_crew():
         return None
 
 
-async def run_quote_pipeline(user_text: str) -> dict[str, Any]:
+async def run_quote_pipeline(user_text: str, lang: str = "es") -> dict[str, Any]:
     """CrewAI extraction + hybrid router polish."""
+    lang = normalize_lang(lang)
     raw = create_quote(user_text)
     crew = build_quote_crew()
     if crew is not None:
@@ -70,7 +73,7 @@ async def run_quote_pipeline(user_text: str) -> dict[str, Any]:
         except Exception as exc:
             raw = f"{raw}\ncrew_fallback: {exc}"
 
-    hybrid = await hybrid_route(user_text + "\n" + raw)
+    hybrid = await hybrid_route(user_text + "\n" + raw, lang=lang)
 
     order_id = str(uuid.uuid4())
     try:
@@ -86,21 +89,49 @@ async def run_quote_pipeline(user_text: str) -> dict[str, Any]:
         pass
 
     line_items = [
-        OrderItem(name="Diagnóstico onsite", quantity=1, price=45),
-        OrderItem(name="Instalación SSD 1TB", quantity=1, price=85),
+        OrderItem(
+            name="Onsite diagnosis" if lang == "en" else "Diagnóstico en sitio",
+            quantity=1,
+            price=45,
+        ),
+        OrderItem(
+            name="1TB SSD installation" if lang == "en" else "Instalación SSD 1TB",
+            quantity=1,
+            price=85,
+        ),
     ]
     order = Order(order_id=order_id, status="draft", order_items=line_items)
     total = sum(i.price * i.quantity for i in line_items)
-
-    response = ResponseFormat(
-        status="completed",
-        message=(
-            f"{hybrid['message']}\n\n"
-            f"Order ID: {order_id}\n"
-            f"Total estimado: ${total}\n"
-            f"{hybrid['routing_label']}"
-        ),
+    infra = format_quote_routing_note(
+        provider_id=str(hybrid.get("provider_id", "amd_local")),
+        ollama_url=str(hybrid.get("ollama_base_url", "?")),
+        model=str(hybrid.get("model", "?")),
+        tokens_remote=int(hybrid.get("tokens_remote", 0)),
+        fireworks_model=settings.fireworks_model if hybrid.get("tokens_remote") else None,
+        lang=lang,
     )
+    if lang == "en":
+        header = (
+            "=== QUOTE GENERATED ===\n\n"
+            f"Order ID: {order_id}\n"
+            f"Status: draft\n"
+        )
+        for it in line_items:
+            header += f"  • {it.name}: ${it.price} x{it.quantity}\n"
+        header += f"ESTIMATED TOTAL: ${total}\n\n"
+        header += infra
+    else:
+        header = (
+            "=== COTIZACIÓN GENERADA ===\n\n"
+            f"Order ID: {order_id}\n"
+            f"Estado: borrador\n"
+        )
+        for it in line_items:
+            header += f"  • {it.name}: ${it.price} x{it.quantity}\n"
+        header += f"TOTAL ESTIMADO: ${total}\n\n"
+        header += infra
+
+    response = ResponseFormat(status="completed", message=header)
 
     return {
         "id": str(uuid.uuid4()),
@@ -110,6 +141,8 @@ async def run_quote_pipeline(user_text: str) -> dict[str, Any]:
         "artifacts": [order.model_dump()],
         "metadata": {
             "runtime": hybrid["runtime"],
+            "provider_id": hybrid["provider_id"],
+            "ollama_base_url": hybrid.get("ollama_base_url"),
             "model": hybrid["model"],
             "tokens_local": hybrid["tokens_local"],
             "tokens_remote": hybrid["tokens_remote"],

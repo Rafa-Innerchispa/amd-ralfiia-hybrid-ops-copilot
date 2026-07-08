@@ -94,21 +94,32 @@ class RemoteAgentConnections:
 # --- Routing intelligence ---
 
 QUOTE_KEYWORDS = re.compile(
-    r"\b(cotiz|quote|precio|paquete|servicio|línea|linea|item|presupuesto|pc doctor)\b",
+    r"\b(cotiz|cotizar|quote|precio|paquete|presupuesto|diagnóstico|diagnostico|ssd|onsite)\b",
     re.I,
 )
 SRE_KEYWORDS = re.compile(
-    r"\b(health|watchdog|incident|caída|caida|container|docker|remediation|sre|alerta|servicio)\b",
+    r"\b(health check|watchdog|incident|caída|caida|container|docker|remediation|sre|alerta|stack ralfiia)\b",
+    re.I,
+)
+TRACK1_LOCAL = re.compile(
+    r"\b(sentiment|clasifica|classify|classification|ner|named entity|positive|negative|neutral|extract entity|label|summarize|summary)\b",
+    re.I,
+)
+TRACK1_COMPLEX = re.compile(
+    r"\b(code|debug|math|puzzle|matrix|algorithm|eigenvalue|implement|python|recursion|proof|compile)\b",
     re.I,
 )
 
 
 def resolve_target_agent(task: str) -> str:
-    if SRE_KEYWORDS.search(task) and not QUOTE_KEYWORDS.search(task):
+    if TRACK1_COMPLEX.search(task):
+        return "track1_fireworks"
+    if TRACK1_LOCAL.search(task):
+        return "track1_local"
+    if SRE_KEYWORDS.search(task):
         return "watchdog_sre_agent"
     if QUOTE_KEYWORDS.search(task):
         return "smart_quoter_agent"
-    # Default: quoter for business ops copilot
     return "smart_quoter_agent"
 
 
@@ -136,6 +147,7 @@ async def send_task(
     session_id: str,
     *,
     scheme: str = "Bearer",
+    lang: str = "es",
 ) -> dict[str, Any]:
     """Core A2A task propagation — metadata + acceptedOutputModes."""
     task_id = str(uuid.uuid4())
@@ -145,7 +157,7 @@ async def send_task(
         message=A2AMessage(
             role="user",
             parts=[A2AMessagePart(text=task)],
-            metadata={"conversation_id": session_id, "delegated_by": "root_gateway"},
+            metadata={"conversation_id": session_id, "delegated_by": "root_gateway", "lang": lang},
         ),
         acceptedOutputModes=["text", "text/plain"],
     )
@@ -184,7 +196,9 @@ class RootOrchestrator:
         self._event_buffer = self._event_buffer[:200]
         mongo_store.append_event(record)
 
-    async def run_async(self, user_message: str, session_id: str | None = None) -> AsyncIterator[Event]:
+    async def run_async(
+        self, user_message: str, session_id: str | None = None, lang: str = "es"
+    ) -> AsyncIterator[Event]:
         """Process real-time async event stream for UI / ADK consumers."""
         state = self.sessions.get_or_create(session_id)
         sid = state.session_id
@@ -196,6 +210,39 @@ class RootOrchestrator:
         target = resolve_target_agent(user_message)
         yield Event(type="routing_decision", data={"target_agent": target, "session_id": sid})
         self._log_event("routing_decision", {"target_agent": target, "session_id": sid})
+
+        if target in ("track1_local", "track1_fireworks"):
+            from app.hybrid_engine import process_single_task
+
+            task_id = f"chat-{sid[:8]}"
+            try:
+                row = await process_single_task(task_id, user_message, lang=lang)
+                answer = row.get("answer", "")
+                meta = row.get("metadata", {})
+                client_dict = {
+                    "is_task_complete": True,
+                    "require_user_input": False,
+                    "content": answer,
+                    "status": "completed",
+                    "metadata": meta,
+                }
+                self.sessions.append_turn(sid, "assistant", answer)
+                yield Event(type="delegation_completed", data={"agent": target, "result": client_dict})
+                self._log_event(
+                    "delegation_completed",
+                    {
+                        "agent": target,
+                        "runtime": meta.get("provider_id") or meta.get("routing"),
+                        "model": meta.get("model"),
+                        "tokens_remote": meta.get("tokens_remote", 0),
+                        "tokens_local": meta.get("tokens_local", 0),
+                    },
+                )
+            except Exception as exc:
+                err = {"error": str(exc), "agent": target}
+                yield Event(type="delegation_failed", data=err)
+                self._log_event("delegation_failed", err)
+            return
 
         card = await fetch_agent_card(target, self.connections)
         if card:
@@ -211,7 +258,9 @@ class RootOrchestrator:
         self._log_event("delegation_started", {"agent": target, "url": target_url})
 
         try:
-            result = await send_task(target, user_message, target_url, auth, sid, scheme=scheme)
+            result = await send_task(
+                target, user_message, target_url, auth, sid, scheme=scheme, lang=lang
+            )
             parsed = A2ATaskResponse.model_validate(result) if "status" in result else None
             client_dict = parsed.to_client_dict() if parsed else result
             self.sessions.append_turn(sid, "assistant", client_dict.get("content", str(result)))
@@ -231,9 +280,11 @@ class RootOrchestrator:
             yield Event(type="delegation_failed", data=err)
             self._log_event("delegation_failed", err)
 
-    async def delegate_sync(self, user_message: str, session_id: str | None = None) -> dict[str, Any]:
+    async def delegate_sync(
+        self, user_message: str, session_id: str | None = None, lang: str = "es"
+    ) -> dict[str, Any]:
         final: dict[str, Any] = {"events": [], "session_id": session_id}
-        async for ev in self.run_async(user_message, session_id):
+        async for ev in self.run_async(user_message, session_id, lang=lang):
             final["events"].append({"type": ev.type, "data": ev.data, "ts": ev.ts})
             if ev.type == "delegation_completed":
                 final["result"] = ev.data.get("result")

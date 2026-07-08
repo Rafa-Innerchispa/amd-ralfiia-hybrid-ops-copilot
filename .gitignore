@@ -1,5 +1,11 @@
 .env
+.env.*
+!.env.example
 .env.local
+*.pem
+*.key
+credentials.json
+secrets.json
 *.pyc
 __pycache__/
 .venv/
@@ -13,3 +19,4 @@ agent_smart_quoter/.venv/
 agent_watchdog/.venv/
 track1_agent/.venv/
 track2_agent/.venv/
+/tmp/

@@ -70,7 +70,11 @@ async def handle_task(payload: A2ATaskRequest, authorization: str | None = Heade
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     text = " ".join(p.text for p in payload.message.parts)
-    out = run_watchdog(text, thread_id=payload.sessionId)
+    req_lang = (payload.message.metadata or {}).get("lang", "es")
+    try:
+        out = run_watchdog(text, thread_id=payload.sessionId, lang=req_lang)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Watchdog graph error: {exc}") from exc
     rf = out["response_format"]
 
     result = {

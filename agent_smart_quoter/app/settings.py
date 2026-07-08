@@ -9,10 +9,12 @@ class AgentSettings(BaseSettings):
     smart_quoter_agent_auth: str = ""
 
     ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_intake_model: str = "qwen2.5:14b-instruct-q4_K_M"
+    ollama_amd_url: str = "http://192.168.1.5:11434"
+    ollama_primary_url: str = "http://192.168.1.4:11434"
+    ollama_intake_model: str = "qwen2.5:7b"
 
     fireworks_api_base: str = "https://api.fireworks.ai/inference/v1"
-    fireworks_model: str = "accounts/fireworks/models/gemma-2-9b-it"
+    fireworks_model: str = "accounts/fireworks/models/gemma-4-31b-it"
     fireworks_api_key: str = ""
 
     mongo_uri: str = "mongodb://127.0.0.1:27017"

@@ -16,12 +16,14 @@ from pydantic import BaseModel, Field
 from app import mongo_store
 from app.hybrid_engine import (
     ALLOWED_MODELS,
+    DEFAULT_COMPLEX_MODEL,
     execute_harness_from_file,
     execute_harness_from_tasks,
     process_single_task,
 )
 from app.integrations import smart_quoter_bridge
 from app.orchestrator import orchestrator
+from app.runtime_providers import list_providers, select_ollama_url
 from app.settings import settings
 from app.track1_eval import evaluate_task
 from scripts.seed_mongo import seed_if_empty
@@ -42,6 +44,7 @@ class Track1Input(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     session_id: str | None = None
+    lang: str = "es"
 
 
 class ChatResponse(BaseModel):
@@ -53,8 +56,11 @@ class ChatResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    seed_if_empty()
-    mongo_store.append_event({"type": "system_boot", "service": "amd-core-engine"})
+    try:
+        seed_if_empty()
+        mongo_store.append_event({"type": "system_boot", "service": "amd-core-engine"})
+    except Exception:
+        pass
     yield
 
 
@@ -99,7 +105,21 @@ async def health_check():
         "mongo": mongo_store.ping(),
         "transactions": mongo_store.count_transactions(),
         "fireworks_configured": bool(settings.fireworks_api_key),
+        "amd_cloud_configured": bool(settings.amd_cloud_api_token),
+        "amd_inference_configured": bool(settings.amd_inference_base_url),
         "ollama_model": settings.ollama_intake_model,
+        "ollama_amd_url": settings.ollama_amd_url,
+        "ollama_primary_url": settings.ollama_primary_url,
+        "runtime_providers": [
+            {
+                "id": p.provider_id,
+                "url": p.ollama_base_url,
+                "available": p.available,
+                "label": p.label,
+            }
+            for p in list_providers()
+        ],
+        "selected_ollama": select_ollama_url(prefer_amd=True).provider_id,
     }
 
 
@@ -120,6 +140,7 @@ async def api_index():
             "route_task": "POST /api/v1/route-task",
             "chat": "POST /api/v1/chat",
             "showcase": "POST /api/v1/demo/showcase",
+            "runtime_providers": "GET /api/v1/runtime/providers",
             "events": "GET /events",
             "services": "GET /services",
         },
@@ -171,13 +192,44 @@ async def route_single_task(item: TaskItem):
     return out
 
 
+@app.get("/api/v1/runtime/providers")
+async def runtime_providers():
+    """Lista proveedores Ollama (AMD .5, primary .4, localhost) y selección activa."""
+    providers = list_providers()
+    selected = select_ollama_url(prefer_amd=True)
+    return {
+        "ok": True,
+        "selected": {
+            "provider_id": selected.provider_id,
+            "ollama_base_url": selected.ollama_base_url,
+            "available": selected.available,
+            "reason": selected.reason,
+        },
+        "providers": [
+            {
+                "provider_id": p.provider_id,
+                "ollama_base_url": p.ollama_base_url,
+                "label": p.label,
+                "reason": p.reason,
+                "available": p.available,
+            }
+            for p in providers
+        ],
+        "settings": {
+            "ollama_amd_url": settings.ollama_amd_url,
+            "ollama_primary_url": settings.ollama_primary_url,
+            "ollama_intake_model": settings.ollama_intake_model,
+        },
+    }
+
+
 # --- Track 3: A2A mesh + demo integrado ---
 
 
 @app.post("/api/v1/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     sid = req.session_id or str(uuid.uuid4())
-    out = await orchestrator.delegate_sync(req.message, sid)
+    out = await orchestrator.delegate_sync(req.message, sid, lang=req.lang)
     return ChatResponse(
         session_id=out["session_id"],
         result=out.get("result"),
@@ -218,31 +270,176 @@ async def routing_stats():
 
 @app.get("/api/v1/credits/status")
 async def credits_status():
+    from app.amd_cloud_client import account_health
     from app.services.credits_check import fireworks_health, ollama_health
 
     fw = await fireworks_health()
     ol = await ollama_health()
+    amd = await account_health()
     sq = await smart_quoter_bridge.smart_quoter_health()
+    services = await orchestrator.list_registered_services()
     return {
         "fireworks": {
+            **fw,
             "configured": bool(settings.fireworks_api_key),
-            "ok": fw.get("ok", False),
             "base_url": settings.fireworks_api_base,
             "allowed_models": ALLOWED_MODELS,
-            "hint": (
-                "Sin API key — ver docs/RAFAEL_AMD_PANEL.md"
-                if not settings.fireworks_api_key
-                else "API key presente"
+            "default_complex": DEFAULT_COMPLEX_MODEL,
+        },
+        "amd_cloud": {
+            **amd,
+            "inference_base_url": settings.amd_inference_base_url or None,
+            "inference_model": settings.amd_inference_model,
+            "next_step": (
+                "Crear droplet MI300X en AMD Developer Cloud y pegar AMD_INFERENCE_BASE_URL"
+                if amd.get("ok") and not settings.amd_inference_base_url
+                else None
             ),
         },
         "ollama": ol,
-        "smart_quoter_live": sq,
+        "a2a_agents": services,
+        "smart_quoter_live": {
+            **sq,
+            "label": "PC Doctor product (optional)",
+            "url": settings.smart_quoter_url,
+        },
         "ngrok": {
             "base": settings.public_ngrok_base,
             "ui": f"{settings.public_ngrok_base}{settings.public_amd_ops_path}/",
-            "api": f"{settings.public_ngrok_base}{settings.public_amd_api_path}/health",
         },
         "smart_portal": settings.smart_portal_url,
+        "agent_urls": {
+            "smart_quoter_a2a": settings.smart_quoter_agent_url,
+            "watchdog_a2a": settings.watchdog_agent_url,
+        },
+    }
+
+
+@app.get("/api/v1/demo/scenarios")
+async def demo_scenarios():
+    """Guía bilingüe — qué probar, qué hace cada escenario, qué guarda en Mongo."""
+    return {
+        "github": "https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot",
+        "mongo": {
+            "db": settings.mongo_db,
+            "collections": [
+                "amd_hybrid_ops_transactions — cada routing (agente, modelo, tokens local/remoto)",
+                "amd_hybrid_ops_events — delegaciones A2A y pasos demo",
+                "amd_hybrid_ops_sessions — memoria de conversación",
+            ],
+            "seed": "10 transacciones demo PC Doctor (cotizaciones, SRE, routing)",
+        },
+        "amd_stack": {
+            "local_ollama": {
+                "role": "Track 1 — tareas simples, 0 tokens remotos AMD",
+                "model": settings.ollama_intake_model,
+                "url": settings.ollama_base_url,
+            },
+            "fireworks_cloud": {
+                "role": "Track 1 complejo — DeepSeek v4 Pro en Fireworks (GPUs AMD MI300X)",
+                "models": ALLOWED_MODELS,
+                "needs": "FIREWORKS_API_KEY en .env",
+            },
+        },
+        "scenarios": [
+            {
+                "id": "sentiment",
+                "title_es": "Análisis de sentimiento (Ollama local)",
+                "title_en": "Sentiment analysis (local Ollama)",
+                "example_query_es": (
+                    "Analiza el sentimiento del feedback del cliente. Texto: "
+                    "«El técnico de PC Doctor llegó puntual, explicó todo con claridad "
+                    "y dejó mi laptop funcionando perfecta. Muy recomendado.» "
+                    "Responde: POSITIVO, NEGATIVO o NEUTRAL."
+                ),
+                "example_query_en": (
+                    "Analyze customer feedback sentiment. Text: "
+                    "«The PC Doctor technician arrived on time, explained everything clearly, "
+                    "and left my laptop running perfectly. Highly recommended.» "
+                    "Reply: POSITIVE, NEGATIVE, or NEUTRAL."
+                ),
+                "what_happens_es": (
+                    "Evalúa el texto entre comillas (reseña de cliente de ejemplo). "
+                    "Gateway → Ollama qwen2.5 en nodo AMD .5. Veredicto POSITIVO/NEGATIVO/NEUTRAL. "
+                    "0 tokens Fireworks. API AMD Developer Cloud: no se usa."
+                ),
+                "what_happens_en": (
+                    "Evaluates quoted sample customer review text. "
+                    "Gateway → Ollama qwen2.5 on AMD node .5. Verdict POSITIVE/NEGATIVE/NEUTRAL. "
+                    "0 Fireworks tokens. AMD Developer Cloud API: not used."
+                ),
+                "expects_es": ["routing: local", "tokens_remote: 0", "veredicto de sentimiento"],
+                "expects_en": ["routing: local", "tokens_remote: 0", "sentiment verdict"],
+            },
+            {
+                "id": "quote",
+                "title_es": "Cotización A2A (Smart Quoter :8221)",
+                "title_en": "A2A quote (Smart Quoter :8221)",
+                "example_query_es": (
+                    "Cotizar diagnóstico en sitio e instalación de SSD 1TB para cliente PC Doctor"
+                ),
+                "example_query_en": (
+                    "Quote onsite diagnosis and 1TB SSD installation for PC Doctor customer"
+                ),
+                "what_happens_es": (
+                    "Agente A2A :8221 (CrewAI) genera cotización demo. "
+                    "Extracción con Ollama en nodo AMD .5: Diagnóstico en sitio $45 + SSD 1TB $85 ≈ $130. "
+                    "Fireworks solo si pides pulido ejecutivo. API AMD Developer Cloud: no se usa."
+                ),
+                "what_happens_en": (
+                    "A2A agent :8221 (CrewAI) builds demo quote. "
+                    "Extraction via Ollama on AMD node .5: Onsite diagnosis $45 + 1TB SSD $85 ≈ $130. "
+                    "Fireworks only if executive polish requested. AMD Developer Cloud API: not used."
+                ),
+                "expects_es": ["delegation_completed", "agente: smart_quoter_agent", "líneas y total"],
+                "expects_en": ["delegation_completed", "agent: smart_quoter_agent", "line items / total"],
+            },
+            {
+                "id": "sre",
+                "title_es": "Health check SRE (Watchdog :8222)",
+                "title_en": "SRE health check (Watchdog :8222)",
+                "example_query_es": "Health check del stack ralfiia y plan de remediación",
+                "example_query_en": "Health check ralfiia stack and remediation plan",
+                "what_happens_es": (
+                    "Watchdog :8222 (LangGraph) hace sondas HTTP reales en :8220/:8221/:8222. "
+                    "Plan de remediación si algún servicio no responde. Ollama local en el agente."
+                ),
+                "what_happens_en": (
+                    "Watchdog :8222 (LangGraph) runs live HTTP probes on :8220/:8221/:8222. "
+                    "Remediation plan if a service is down. Local Ollama on the agent."
+                ),
+                "expects_es": ["agente: watchdog_sre_agent", "sondas /health", "plan de remediación"],
+                "expects_en": ["agent: watchdog_sre_agent", "/health probes", "remediation plan"],
+            },
+            {
+                "id": "complex",
+                "title_es": "Tarea compleja → Fireworks DeepSeek",
+                "title_en": "Complex task → Fireworks DeepSeek",
+                "example_query_es": (
+                    "Explica paso a paso el algoritmo de autovalores de matrices en Python"
+                ),
+                "example_query_en": (
+                    "Explain matrix eigenvalue algorithm step by step in Python"
+                ),
+                "what_happens_es": (
+                    "Track 1 detecta tarea compleja → API Fireworks (DeepSeek v4 Pro en GPUs AMD MI300X). "
+                    "Tokens remotos > 0. Ollama local no se usa. API AMD Developer Cloud: no se usa."
+                ),
+                "what_happens_en": (
+                    "Track 1 routes complex task → Fireworks API (DeepSeek v4 Pro on AMD MI300X GPUs). "
+                    "Remote tokens > 0. Local Ollama not used. AMD Developer Cloud API: not used."
+                ),
+                "expects_es": ["routing: fireworks", "tokens_remote > 0", "respuesta técnica"],
+                "expects_en": ["routing: fireworks", "tokens_remote > 0", "technical answer"],
+            },
+        ],
+        "optional_integrations": {
+            "smart_quoter_product": {
+                "url": settings.smart_quoter_url,
+                "note_es": "Producto PC Doctor real en :2026 — opcional, no es el agente A2A del hackathon",
+                "note_en": "Real PC Doctor product :2026 — optional, not the hackathon A2A worker",
+            },
+        },
     }
 
 
@@ -260,6 +457,7 @@ async def demo_links():
             "smart_quoter": settings.smart_quoter_url,
         },
         "tracks": ["Track 1 Harness", "Track 3 Unicorn"],
+        "github": "https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot",
     }
 
 

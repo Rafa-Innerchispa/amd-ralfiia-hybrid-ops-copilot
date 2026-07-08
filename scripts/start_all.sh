@@ -10,7 +10,7 @@ cd "$ROOT"
 
 export PYTHONPATH="$ROOT"
 export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
-export MONGO_URI="${MONGO_URI:-mongodb://127.0.0.1:27017}"
+export MONGO_URI="mongodb://127.0.0.1:27017"
 export SMART_QUOTER_URL="${SMART_QUOTER_URL:-http://127.0.0.1:2026}"
 export SMART_QUOTER_AGENT_URL="http://127.0.0.1:8221"
 export WATCHDOG_AGENT_URL="http://127.0.0.1:8222"
@@ -25,12 +25,13 @@ kill_port() {
 }
 
 ensure_venv() {
-  local dir=$1 req=$2
+  local dir="${1:?missing venv dir}"
+  local req="${2:?missing requirements file}"
   if [[ ! -x "$dir/.venv/bin/uvicorn" ]]; then
     python3 -m venv "$dir/.venv"
-    "$dir/.venv/bin/pip" install -q -r "$req" 2>/dev/null || \
-      "$dir/.venv/bin/pip" install -q fastapi uvicorn httpx pydantic pydantic-settings pymongo python-dotenv
   fi
+  "$dir/.venv/bin/pip" install -q -r "$req" 2>/dev/null || \
+    "$dir/.venv/bin/pip" install -q fastapi uvicorn httpx pydantic pydantic-settings pymongo python-dotenv
 }
 
 ensure_venv "$ROOT/backend" "$ROOT/backend/requirements.txt"
@@ -63,8 +64,6 @@ echo ""
 echo "=== RalfIIA AMD Ops — LISTO ==="
 echo "Console local:  http://192.168.1.4:8220/console/"
 echo "Console jurado: ${BASE}/amd-ops/"
-echo "API jurado:     ${BASE}/amd-ops-api/health"
-echo "Smart Quoter:   http://192.168.1.4:2026/"
 echo "Logs:           $LOG/"
 echo ""
 curl -sf http://127.0.0.1:8220/health | python3 -m json.tool 2>/dev/null | head -8 || cat "$LOG/gateway.log" | tail -5

@@ -9,7 +9,8 @@ class WatchdogSettings(BaseSettings):
     watchdog_agent_auth: str = ""
 
     ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = "llama3.1:latest"
+    # No usar OLLAMA_MODEL del .env (formato LiteLLM ollama_chat/...) — modelo Ollama nativo
+    watchdog_ollama_model: str = "qwen2.5:7b"
     public_base_url: str = "http://192.168.1.4:8222"
 
 

@@ -40,6 +40,7 @@ La consola incluye demo interactiva, botones Track 1, chat A2A y métricas en vi
 - Completitud: 4 containers, A2A agent cards, live UI, Mongo seed
 - Product/market: Smart Quoter + SRE Watchdog como workers interoperables
 
-## Premio Gemma ($6k)
+## Handoff / continuar en otro IDE
 
-Usar Gemma-2 vía Fireworks en polish ejecutivo del Smart Quoter.
+**Historia completa del hackathon AMD:** [`docs/HANDOFF_COMPLETO.md`](docs/HANDOFF_COMPLETO.md)
+

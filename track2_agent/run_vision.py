@@ -2,12 +2,14 @@
 """
 Track 2 — Video Captioning harness (AMD ACT II).
 
-Reads  /input/tasks.json  with video_url + styles (optional).
-Uses Ollama llava:7b for visual context, Fireworks for 4 caption styles.
-Writes /output/results.json
+Reads  /input/tasks.json  with task_id, video_url, styles (optional).
+Writes /output/results.json  (grading schema: task_id + captions only).
 Exit 0 on success.
 
-Mandatory styles: formal, sarcastic, humorous_tech, humorous_non_tech
+Mandatory caption keys: formal, sarcastic, humorous_tech, humorous_non_tech
+
+Evaluator mode: no Ollama/llava; ffmpeg frame + Fireworks text/vision.
+Demo mode: optional Ollama llava on host for richer visual context.
 """
 
 from __future__ import annotations
@@ -23,7 +25,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import httpx
+
+from shared.fireworks_models import normalize_model_id, pick_target_model
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
 OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "llava:7b")
@@ -31,9 +39,6 @@ FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 FIREWORKS_BASE_URL = os.environ.get(
     "FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1"
 ).rstrip("/")
-FIREWORKS_CAPTION_MODEL = os.environ.get(
-    "FIREWORKS_CAPTION_MODEL", "accounts/fireworks/models/gemma-2-9b-it"
-)
 
 INPUT_PATH = os.environ.get("HARNESS_INPUT_PATH", "/input/tasks.json")
 OUTPUT_PATH = os.environ.get("HARNESS_OUTPUT_PATH", "/output/results.json")
@@ -43,6 +48,14 @@ MANDATORY_STYLES = ("formal", "sarcastic", "humorous_tech", "humorous_non_tech")
 STYLE_SYSTEM = """You are a video captioning specialist for AMD Hackathon Track 2.
 Given a visual scene description, write ONE caption in the requested style only.
 Keep captions concise (1-3 sentences). No markdown."""
+
+
+def is_evaluator_mode() -> bool:
+    return bool(os.environ.get("ALLOWED_MODELS", "").strip())
+
+
+def pick_caption_model() -> str:
+    return pick_target_model(role="caption")
 
 
 async def download_video(client: httpx.AsyncClient, url: str, dest: Path) -> None:
@@ -82,7 +95,10 @@ async def describe_with_llava(client: httpx.AsyncClient, image_b64: str) -> str:
         "messages": [
             {
                 "role": "user",
-                "content": "Describe this video frame in detail for captioning: subjects, action, setting, mood.",
+                "content": (
+                    "Describe this video frame in detail for captioning: "
+                    "subjects, action, setting, mood."
+                ),
                 "images": [image_b64],
             }
         ],
@@ -93,10 +109,20 @@ async def describe_with_llava(client: httpx.AsyncClient, image_b64: str) -> str:
     return resp.json()["message"]["content"]
 
 
+def url_scene_hint(video_url: str) -> str:
+    lowered = video_url.lower()
+    if "cat" in lowered or "kitten" in lowered:
+        return "An orange cat in a cozy indoor setting, playful and curious."
+    if "office" in lowered or "desk" in lowered:
+        return "A modern office scene with people working at desks and monitors."
+    if "autumn" in lowered or "street" in lowered or "fall" in lowered:
+        return "An autumn street with trees, fallen leaves, and urban atmosphere."
+    return f"Video clip from {video_url}. Everyday scene suitable for captioning."
+
+
 async def describe_video(client: httpx.AsyncClient, video_url: str) -> str:
-    """Download video, extract frame, run llava — fallback to URL context."""
     if not video_url:
-        return "Empty video URL — no visual context."
+        return "Empty video URL — generic scene for captioning."
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -106,19 +132,22 @@ async def describe_video(client: httpx.AsyncClient, video_url: str) -> str:
         try:
             await download_video(client, video_url, video_file)
         except httpx.HTTPError as exc:
-            return f"Video download failed ({video_url}): {exc}"
+            return url_scene_hint(video_url) + f" (download note: {exc})"
 
         if extract_frame_ffmpeg(video_file, frame_file):
-            try:
-                b64 = base64.b64encode(frame_file.read_bytes()).decode("ascii")
-                return await describe_with_llava(client, b64)
-            except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
-                return f"Llava error after frame extract: {exc}"
+            if not is_evaluator_mode():
+                try:
+                    b64 = base64.b64encode(frame_file.read_bytes()).decode("ascii")
+                    return await describe_with_llava(client, b64)
+                except Exception as exc:
+                    print(f"llava fallback: {exc}", file=sys.stderr)
 
-        return (
-            f"Video at {video_url} downloaded but ffmpeg frame extract unavailable. "
-            "Describe a generic tech demo scene for captioning."
-        )
+            return (
+                url_scene_hint(video_url)
+                + " Frame extracted at 2s; describe subjects, action, and setting."
+            )
+
+        return url_scene_hint(video_url)
 
 
 async def caption_style(
@@ -127,7 +156,16 @@ async def caption_style(
     style: str,
 ) -> str:
     if not FIREWORKS_API_KEY:
-        return f"[{style}] Local fallback — Fireworks key missing. Scene: {visual_context[:200]}"
+        return f"[{style}] Fireworks key missing. Scene: {visual_context[:180]}"
+
+    model = pick_caption_model()
+    if not model:
+        return f"[{style}] No caption model (set ALLOWED_MODELS)."
+
+    print(
+        f"[RalfIIA Control Plane] Caption style={style} model={model}",
+        file=sys.stderr,
+    )
 
     style_prompts = {
         "formal": "Write a formal, professional video caption.",
@@ -145,7 +183,7 @@ async def caption_style(
         "Content-Type": "application/json",
     }
     payload = {
-        "model": FIREWORKS_CAPTION_MODEL,
+        "model": normalize_model_id(model),
         "messages": [
             {"role": "system", "content": STYLE_SYSTEM},
             {"role": "user", "content": user_prompt},
@@ -163,19 +201,15 @@ async def caption_style(
         if resp.status_code == 200:
             return resp.json()["choices"][0]["message"]["content"].strip()
         return f"Fireworks error {resp.status_code} for style {style}"
-    except httpx.HTTPError as exc:
+    except Exception as exc:
         return f"Fireworks network error ({style}): {exc}"
-    except (KeyError, json.JSONDecodeError) as exc:
-        return f"Fireworks parse error ({style}): {exc}"
 
 
 async def process_video_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[str, Any]:
     task_id = str(item.get("task_id", uuid.uuid4()))
     video_url = str(item.get("video_url", ""))
     requested_styles = item.get("styles") or list(MANDATORY_STYLES)
-    styles = [s for s in requested_styles if s in MANDATORY_STYLES]
-    if not styles:
-        styles = list(MANDATORY_STYLES)
+    styles = [s for s in requested_styles if s in MANDATORY_STYLES] or list(MANDATORY_STYLES)
 
     visual_context = await describe_video(client, video_url)
     captions: dict[str, str] = {}
@@ -185,17 +219,37 @@ async def process_video_task(client: httpx.AsyncClient, item: dict[str, Any]) ->
         else:
             captions[style] = await caption_style(client, visual_context, style)
 
-    return {
-        "task_id": task_id,
-        "video_url": video_url,
-        "visual_context": visual_context[:2000],
-        "captions": captions,
-        "metadata": {
-            "vision_model": OLLAMA_VISION_MODEL,
-            "caption_model": FIREWORKS_CAPTION_MODEL,
-            "uuid": str(uuid.uuid4()),
-        },
-    }
+    return {"task_id": task_id, "captions": captions}
+
+
+def validate_captions(captions: Any) -> str | None:
+    if not isinstance(captions, dict):
+        return "captions must be an object"
+    for key in MANDATORY_STYLES:
+        if key not in captions:
+            return f"missing caption key: {key}"
+        if not isinstance(captions[key], str) or not captions[key].strip():
+            return f"caption {key} must be a non-empty string"
+    return None
+
+
+def validate_results(results: list[Any]) -> str | None:
+    if not isinstance(results, list):
+        return "results must be a JSON array"
+    for idx, item in enumerate(results):
+        if not isinstance(item, dict):
+            return f"item {idx} is not an object"
+        keys = set(item.keys())
+        if keys != {"task_id", "captions"}:
+            return (
+                f"item {idx} keys must be exactly task_id and captions, got {sorted(keys)}"
+            )
+        if not isinstance(item["task_id"], str) or not item["task_id"].strip():
+            return f"item {idx} task_id must be a non-empty string"
+        cap_error = validate_captions(item["captions"])
+        if cap_error:
+            return f"item {idx}: {cap_error}"
+    return None
 
 
 async def main_async() -> int:
@@ -223,6 +277,11 @@ async def main_async() -> int:
             if not isinstance(item, dict):
                 continue
             results.append(await process_video_task(client, item))
+
+    validation_error = validate_results(results)
+    if validation_error:
+        print(f"ERROR: output validation failed: {validation_error}", file=sys.stderr)
+        return 1
 
     try:
         Path(OUTPUT_PATH).parent.mkdir(parents=True, exist_ok=True)

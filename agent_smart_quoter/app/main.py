@@ -67,7 +67,8 @@ async def handle_task(payload: A2ATaskRequest, authorization: str | None = Heade
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     text = " ".join(p.text for p in payload.message.parts)
-    result = await run_quote_pipeline(text)
+    req_lang = (payload.message.metadata or {}).get("lang", "es")
+    result = await run_quote_pipeline(text, lang=req_lang)
     result["sessionId"] = payload.sessionId
     result["id"] = payload.id
 
