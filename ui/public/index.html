@@ -117,7 +117,7 @@
       <span class="pill" id="pillFw">fireworks …</span>
       <button type="button" class="lang-btn active" id="langEs">ES</button>
       <button type="button" class="lang-btn" id="langEn">EN</button>
-      <button type="button" class="lang-btn" id="btnNotifyGemma" style="border-color: var(--amber); color: var(--amber); font-weight: bold;">🔔 NOTIFY GEMMA GPU</button>
+      <button type="button" class="lang-btn" id="btnNotifyGemma" data-i18n="btnNotifyGemma" style="border-color: var(--amber); color: var(--amber); font-weight: bold;">🔔 NOTIFY GEMMA GPU</button>
       <a class="pill github" id="githubLink" href="https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot" target="_blank" rel="noopener">GitHub ↗</a>
       <span id="clock" style="font-size:.68rem;color:var(--muted)"></span>
     </div>
@@ -138,6 +138,7 @@
           <li id="step2" data-i18n="step2">Ejecuta la demo: Full Auto Demo <em>o</em> un preset (2–5) — no hace falta ambos</li>
           <li id="step2b" class="alt" data-i18n="step2b">↳ Los presets rellenan el texto y envían solos; no pulses Send otra vez</li>
           <li id="step3" data-i18n="step3">Lee el cuadro RESULTADO abajo — ahí está la respuesta final</li>
+          <li id="stepGemma" class="alt" data-i18n="stepGemma" style="color: var(--amber); margin-top: 0.4rem;">↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa "🔔 NOTIFY GEMMA GPU" en la cabecera para alertar al equipo.</li>
         </ol>
       </div>
       <h2 data-i18n="metricsTitle">Token economics (Track 1)</h2>
@@ -210,6 +211,8 @@
         step2: "Ejecuta la demo: Full Auto Demo o un preset (2–5) — elige uno, no los dos",
         step2b: "Los presets rellenan el texto y envían solos; no pulses Send otra vez",
         step3: "Lee el cuadro RESULTADO — ahí está la respuesta final",
+        stepGemma: "↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa '🔔 NOTIFICAR GEMMA GPU' en la cabecera para alertar al equipo.",
+        btnNotifyGemma: "🔔 NOTIFICAR GEMMA GPU",
         resultLabel: "RESULTADO",
         metricsTitle: "Token economics (Track 1)",
         tokLocalLbl: "Local Ollama — AMD score 0",
@@ -305,6 +308,8 @@
         step2: "Run demo: Full Auto Demo OR one preset (2–5) — pick one, not both",
         step2b: "Presets auto-fill and auto-send; do not click Send again",
         step3: "Read the RESULT box below — that is the final answer",
+        stepGemma: "↳ Note: If you want to test local Gemma and the server is offline, click '🔔 NOTIFY GEMMA GPU' in the header to alert the team.",
+        btnNotifyGemma: "🔔 NOTIFY GEMMA GPU",
         resultLabel: "RESULT",
         metricsTitle: "Token economics (Track 1)",
         tokLocalLbl: "Local Ollama — AMD score 0",
@@ -456,6 +461,8 @@
       }
       const li2b = document.getElementById("step2b");
       if (li2b && I18N[lang].step2b) li2b.textContent = I18N[lang].step2b;
+      const lig = document.getElementById("stepGemma");
+      if (lig && I18N[lang].stepGemma) lig.textContent = I18N[lang].stepGemma;
       const inp = document.getElementById("input");
       if (inp) inp.placeholder = t("inputPh");
       const ans = document.getElementById("answer");
