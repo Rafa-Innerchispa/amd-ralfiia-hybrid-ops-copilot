@@ -184,6 +184,28 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es", force
                     if res.get("ok"):
                         answer = res["content"]
                         model_path = res.get("model") or settings.amd_inference_model
+                        
+                        if is_gemma_preset:
+                            audit_prompt = (
+                                f"Actúa como el Agente Auditor Gemma de AMD. Analiza el siguiente código "
+                                f"generado para optimización en entornos AMD ROCm GPU, eficiencia de memoria y complejidad. "
+                                f"Responde de forma muy concisa con 3 viñetas. Código:\n{answer}"
+                                if lang == "es" else
+                                f"Act as the Gemma AMD Auditor Agent. Analyze the following generated code "
+                                f"for optimization in AMD ROCm GPU environments, memory efficiency, and complexity. "
+                                f"Reply very concisely with 3 bullet points. Code:\n{answer}"
+                            )
+                            try:
+                                audit_res = await chat_inference(audit_prompt)
+                                if audit_res.get("ok"):
+                                    answer = (
+                                        f"{answer}\n\n"
+                                        f"=== 🛡️ ROCm GPU AUDIT (Gemma Supervisor) ===\n"
+                                        f"{audit_res['content']}"
+                                    )
+                            except Exception:
+                                pass
+
                         answer = format_amd_cloud_result(answer, model_path, lang)
                         engine = f"AMD Cloud vLLM ({model_path})"
                         is_cloud_vllm = True
@@ -206,6 +228,27 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es", force
                 try:
                     answer, engine = await run_fireworks_remote(client, prompt, target_model=target_fireworks_model)
                     model_path = target_fireworks_model  # Aseguramos que el model_path refleje el modelo usado
+                    
+                    if is_gemma_preset:
+                        audit_prompt = (
+                            f"Actúa como el Agente Auditor Gemma de AMD. Analiza el siguiente código "
+                            f"generado para optimización en entornos AMD ROCm GPU, eficiencia de memoria y complejidad. "
+                            f"Responde de forma muy concisa con 3 viñetas. Código:\n{answer}"
+                            if lang == "es" else
+                            f"Act as the Gemma AMD Auditor Agent. Analyze the following generated code "
+                            f"for optimization in AMD ROCm GPU environments, memory efficiency, and complexity. "
+                            f"Reply very concisely with 3 bullet points. Code:\n{answer}"
+                        )
+                        try:
+                            audit_res, _ = await run_fireworks_remote(client, audit_prompt, target_model=target_fireworks_model)
+                            answer = (
+                                f"{answer}\n\n"
+                                f"=== 🛡️ ROCm GPU AUDIT (Gemma Supervisor) ===\n"
+                                f"{audit_res}"
+                            )
+                        except Exception:
+                            pass
+
                     answer = format_fireworks_result(answer, model_path, lang, fallback_reason)
                     meta_extra = {
                         "routing": "fireworks",
