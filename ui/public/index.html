@@ -753,7 +753,7 @@
 
         const pillJupyterGemma = document.getElementById("gemmaJupyterStatus");
         if (pillJupyterGemma) {
-          if (base_url && (base_url.includes("radeon-global") || base_url.includes("192.168.1.4"))) {
+          if (base_url && (base_url.includes("radeon-global") || base_url.includes("notebooks.amd.com") || base_url.includes("192.168.1.4"))) {
             pillJupyterGemma.textContent = "ACTIVE";
             pillJupyterGemma.className = "pill on";
           } else {
@@ -764,7 +764,7 @@
 
         const pillAmdCloudGemma = document.getElementById("gemmaAmdCloudStatus");
         if (pillAmdCloudGemma) {
-          if (base_url && !base_url.includes("radeon-global") && !base_url.includes("192.168.1.4")) {
+          if (base_url && !base_url.includes("radeon-global") && !base_url.includes("notebooks.amd.com") && !base_url.includes("192.168.1.4")) {
             pillAmdCloudGemma.textContent = "ACTIVE";
             pillAmdCloudGemma.className = "pill on";
           } else {

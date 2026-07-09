@@ -236,7 +236,7 @@ async def notify_gemma_activation():
         "🚨 *Alerta AMD Hackathon*: Un evaluador está probando la aplicación y requiere activar "
         "el modelo Gemma en la GPU de AMD (Jupyter Server).\n\n"
         "Por favor, enciende la instancia de Jupyter y levanta el servicio vLLM/Gemma.\n"
-        "Jupyter URL: https://radeon-global.anruicloud.com/instances/hf-129-3b565f68/lab"
+        "Jupyter URL: https://notebooks.amd.com/hackathon"
     )
     
     url = f"{evo_base}/message/sendText/{evo_inst}"
