@@ -148,6 +148,29 @@
       <div class="metric"><div class="v" id="txnCount">0</div><div class="l" data-i18n="txnLbl">Mongo transactions</div></div>
       <h2 data-i18n="urlTitle">Public demo URL</h2>
       <div class="url-box" id="juryUrl">—</div>
+      
+      <h2 style="margin-top: 1rem;" data-i18n="gemmaPanelTitle">Gemma GPU Backends (Internal)</h2>
+      <div class="card">
+        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>Option A: Fireworks</span>
+          <span class="pill off" id="gemmaFwStatus">OFFLINE</span>
+        </div>
+        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaFwDesc">Gemma-4-31b-it on Fireworks (Deploy on Demand)</div>
+      </div>
+      <div class="card">
+        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>Option B: Jupyter Lab</span>
+          <span class="pill off" id="gemmaJupyterStatus">OFFLINE</span>
+        </div>
+        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaJupyterDesc">Temporary Jupyter server on Radeon Cloud</div>
+      </div>
+      <div class="card">
+        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>Option C: AMD Cloud</span>
+          <span class="pill off" id="gemmaAmdCloudStatus">OFFLINE</span>
+        </div>
+        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaAmdCloudDesc">MI300X vLLM Droplet ($100 credits)</div>
+      </div>
     </section>
 
     <section class="panel">
@@ -171,6 +194,7 @@
         <button type="button" class="secondary" data-step="3" data-preset="quote" data-msg-es="Cotizar diagnóstico en sitio e instalación de SSD 1TB para cliente PC Doctor" data-msg-en="Quote onsite diagnosis and 1TB SSD installation for PC Doctor customer" data-i18n="btnQuote">3. Cotización demo (agente A2A :8221)</button>
         <button type="button" class="secondary" data-step="3" data-preset="sre" data-msg-es="Health check del stack ralfiia y plan de remediación" data-msg-en="Health check ralfiia stack and remediation plan" data-i18n="btnSre">4. Health check SRE (agente A2A :8222)</button>
         <button type="button" class="secondary" data-step="3" data-preset="complex" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnFw">5. Tarea compleja (Fireworks DeepSeek en GPU AMD)</button>
+        <button type="button" class="secondary" id="btnGemmaPreset" data-step="3" data-preset="gemma" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnGemmaPreset" style="border-color: var(--amber); color: var(--amber);" title="Gemma must be active on Fireworks, Jupyter or AMD Developer Cloud" disabled>6. Tarea compleja (Gemma en GPU AMD)</button>
       </div>
       <p style="font-size:.6rem;color:var(--dim)" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo. PC Doctor = tu marca real; el “cliente” no se busca en Mongo en esta demo.</p>
     </section>
@@ -213,6 +237,12 @@
         step3: "Lee el cuadro RESULTADO — ahí está la respuesta final",
         stepGemma: "↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa '🔔 NOTIFICAR GEMMA GPU' en la cabecera para alertar al equipo.",
         btnNotifyGemma: "🔔 NOTIFICAR GEMMA GPU",
+        gemmaPanelTitle: "Backends Gemma GPU (Interno)",
+        gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
+        gemmaJupyterDesc: "Servidor Jupyter temporal en Radeon Cloud",
+        gemmaAmdCloudDesc: "Droplet MI300X vLLM ($100 créditos)",
+        btnGemmaPreset: "6. Tarea compleja (Gemma en GPU AMD)",
+        btnGemmaPresetTooltip: "Gemma debe estar activa en Fireworks, Jupyter o AMD Developer Cloud",
         resultLabel: "RESULTADO",
         metricsTitle: "Token economics (Track 1)",
         tokLocalLbl: "Local Ollama — AMD score 0",
@@ -310,6 +340,12 @@
         step3: "Read the RESULT box below — that is the final answer",
         stepGemma: "↳ Note: If you want to test local Gemma and the server is offline, click '🔔 NOTIFY GEMMA GPU' in the header to alert the team.",
         btnNotifyGemma: "🔔 NOTIFY GEMMA GPU",
+        gemmaPanelTitle: "Gemma GPU Backends (Internal)",
+        gemmaFwDesc: "Gemma-4-31b-it on Fireworks (Deploy on Demand)",
+        gemmaJupyterDesc: "Temporary Jupyter server on Radeon Cloud",
+        gemmaAmdCloudDesc: "MI300X vLLM Droplet ($100 credits)",
+        btnGemmaPreset: "6. Complex task (Gemma on AMD GPU)",
+        btnGemmaPresetTooltip: "Gemma must be active on Fireworks, Jupyter or AMD Developer Cloud",
         resultLabel: "RESULT",
         metricsTitle: "Token economics (Track 1)",
         tokLocalLbl: "Local Ollama — AMD score 0",
@@ -463,6 +499,10 @@
       if (li2b && I18N[lang].step2b) li2b.textContent = I18N[lang].step2b;
       const lig = document.getElementById("stepGemma");
       if (lig && I18N[lang].stepGemma) lig.textContent = I18N[lang].stepGemma;
+      const btnG = document.getElementById("btnGemmaPreset");
+      if (btnG) {
+        btnG.title = btnG.disabled ? t("btnGemmaPresetTooltip") : "";
+      }
       const inp = document.getElementById("input");
       if (inp) inp.placeholder = t("inputPh");
       const ans = document.getElementById("answer");
@@ -511,7 +551,7 @@
       return d.result?.content || d.result?.message || "";
     }
 
-    async function sendChat(text, silent) {
+    async function sendChat(text, silent, forceModel) {
       if (!text.trim()) return;
       if (!silent) {
         answerEl.className = "answer-box";
@@ -523,7 +563,7 @@
         const d = await jfetch("/api/v1/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, lang: lang }),
+          body: JSON.stringify({ message: text, lang: lang, force_model: forceModel }),
         }, t("delegateLbl"));
         const formatted = formatAnswer(d);
         const ev = (d.events || []).find(e => e.type === "routing_decision");
@@ -696,6 +736,50 @@
         document.getElementById("juryUrl").textContent = ng.ui || links.jury_urls?.amd_console_ui || "—";
         if (links.github) document.getElementById("githubLink").href = links.github;
 
+        const isGemmaFwReady = fw.gemma_deployed && fw.gemma_deployed.length > 0;
+        const base_url = cred.amd_cloud?.inference_base_url || "";
+        const isGemmaAmdReady = !!base_url;
+
+        const pillFwGemma = document.getElementById("gemmaFwStatus");
+        if (pillFwGemma) {
+          if (isGemmaFwReady) {
+            pillFwGemma.textContent = "ONLINE";
+            pillFwGemma.className = "pill on";
+          } else {
+            pillFwGemma.textContent = "OFFLINE";
+            pillFwGemma.className = "pill off";
+          }
+        }
+
+        const pillJupyterGemma = document.getElementById("gemmaJupyterStatus");
+        if (pillJupyterGemma) {
+          if (base_url && (base_url.includes("radeon-global") || base_url.includes("192.168.1.4"))) {
+            pillJupyterGemma.textContent = "ACTIVE";
+            pillJupyterGemma.className = "pill on";
+          } else {
+            pillJupyterGemma.textContent = "STANDBY";
+            pillJupyterGemma.className = "pill off";
+          }
+        }
+
+        const pillAmdCloudGemma = document.getElementById("gemmaAmdCloudStatus");
+        if (pillAmdCloudGemma) {
+          if (base_url && !base_url.includes("radeon-global") && !base_url.includes("192.168.1.4")) {
+            pillAmdCloudGemma.textContent = "ACTIVE";
+            pillAmdCloudGemma.className = "pill on";
+          } else {
+            pillAmdCloudGemma.textContent = "STANDBY";
+            pillAmdCloudGemma.className = "pill off";
+          }
+        }
+
+        const btnGemma = document.getElementById("btnGemmaPreset");
+        const gemmaReady = isGemmaFwReady || isGemmaAmdReady;
+        if (btnGemma) {
+          btnGemma.disabled = !gemmaReady;
+          btnGemma.title = gemmaReady ? "" : t("btnGemmaPresetTooltip");
+        }
+
         const cards = document.getElementById("agentCards");
         cards.innerHTML = "";
         let allOnline = true;
@@ -763,7 +847,8 @@
         if (b.dataset.preset) showPresetDoc(b.dataset.preset);
         const msg = presetMsg(b);
         document.getElementById("input").value = msg;
-        sendChat(msg);
+        const force = b.dataset.preset === "gemma" ? "gemma" : null;
+        sendChat(msg, false, force);
       };
     });
     document.getElementById("btnShowcase").onclick = () => { showPresetDoc("showcase"); runShowcase(); };

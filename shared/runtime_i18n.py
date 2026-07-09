@@ -74,7 +74,10 @@ def format_sentiment_result(
     )
 
 
-def format_fireworks_result(answer: str, model_path: str, lang: Lang) -> str:
+def format_fireworks_result(answer: str, model_path: str, lang: Lang, fallback_reason: str | None = None) -> str:
+    infra_note = ""
+    if fallback_reason:
+        infra_note = f"  • Fallback: {fallback_reason}\n"
     if lang == "en":
         return (
             "=== COMPLEX TASK RESULT (FIREWORKS) ===\n\n"
@@ -82,6 +85,7 @@ def format_fireworks_result(answer: str, model_path: str, lang: Lang) -> str:
             "Infrastructure:\n"
             f"  • Engine: Fireworks AI (AMD MI300X GPUs)\n"
             f"  • Model: {model_path}\n"
+            f"{infra_note}"
             "  • Local Ollama: not used\n"
             "  • AMD Developer Cloud API: not used (optional for GPU droplets)"
         )
@@ -91,6 +95,7 @@ def format_fireworks_result(answer: str, model_path: str, lang: Lang) -> str:
         "Infraestructura:\n"
         f"  • Motor: Fireworks AI (GPUs AMD MI300X)\n"
         f"  • Modelo: {model_path}\n"
+        f"{infra_note}"
         "  • Ollama local: no se usa\n"
         "  • API AMD Developer Cloud: no se usa (opcional para droplets GPU)"
     )

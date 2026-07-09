@@ -45,7 +45,7 @@ DEFAULT_COMPLEX_MODEL = normalize_model_id(
     or "accounts/fireworks/models/deepseek-v4-pro"
 )
 
-COMPLEX_KEYWORDS = ("code", "debug", "math", "puzzle", "matrix", "algorithm")
+COMPLEX_KEYWORDS = ("code", "debug", "math", "puzzle", "matrix", "algorithm", "algoritmo", "matrices", "autovalor", "complejo", "matemáticas", "programar")
 
 # Rutas harness (montar volúmenes en Docker: /input, /output)
 HARNESS_INPUT = os.environ.get("HARNESS_INPUT_PATH", "/input/tasks.json")
@@ -134,14 +134,52 @@ async def run_fireworks_remote(
         return f"Failed to connect to AMD Cloud proxy: {exc}", "Network Error"
 
 
-async def process_single_task(task_id: str, prompt: str, lang: str = "es") -> dict[str, Any]:
+async def process_single_task(task_id: str, prompt: str, lang: str = "es", force_model: str | None = None) -> dict[str, Any]:
     lang = normalize_lang(lang)
     async with httpx.AsyncClient() as client:
-        if is_complex_task(prompt):
+        is_gemma_preset = (force_model == "gemma")
+        
+        if is_complex_task(prompt) or is_gemma_preset:
             is_cloud_vllm = False
+            fallback_reason = None
+            
+            if is_gemma_preset:
+                target_fireworks_model = "accounts/fireworks/models/gemma-4-31b-it"
+                if not settings.fireworks_api_key and not settings.amd_inference_base_url:
+                    err_msg = (
+                        "No hay backend de Gemma activo. Por favor configura Fireworks o enciende el Jupyter."
+                        if lang == "es" else
+                        "No active Gemma backend. Please configure Fireworks or start the Jupyter server."
+                    )
+                    return {
+                        "task_id": task_id,
+                        "answer": f"ERROR: {err_msg}",
+                        "result": {
+                            "message": f"ERROR: {err_msg}",
+                            "content": f"ERROR: {err_msg}"
+                        },
+                        "metadata": {
+                            "routing": "error",
+                            "error": err_msg,
+                            "routing_label": "Gemma Offline"
+                        }
+                    }
+            else:
+                target_fireworks_model = resolve_complex_model()
+                if "gemma" in target_fireworks_model.lower() and not settings.fireworks_api_key:
+                    fallback_reason = (
+                        "Gemma requiere 'Deploy on Demand' en app.fireworks.ai y FIREWORKS_API_KEY no configurada. "
+                        "Usando deepseek-v4-pro como fallback."
+                        if lang == "es"
+                        else "Gemma requires 'Deploy on Demand' in app.fireworks.ai and FIREWORKS_API_KEY not configured. "
+                        "Using deepseek-v4-pro as fallback."
+                    )
+                    target_fireworks_model = "deepseek-v4-pro"
+
             if settings.amd_inference_base_url:
                 try:
                     from app.amd_cloud_client import chat_inference
+
                     res = await chat_inference(prompt)
                     if res.get("ok"):
                         answer = res["content"]
@@ -165,22 +203,41 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es") -> di
                 except Exception:
                     pass
             if not is_cloud_vllm:
-                answer, engine = await run_fireworks_remote(client, prompt)
-                model_path = resolve_complex_model()
-                answer = format_fireworks_result(answer, model_path, lang)
-                meta_extra = {
-                    "routing": "fireworks",
-                    "provider_id": "fireworks_cloud",
-                    "tokens_remote": 1,
-                    "model": model_path,
-                    "routing_label": format_routing_label(
-                        runtime="fireworks_cloud",
-                        provider_id="fireworks_cloud",
-                        model=model_path,
-                        ollama_url=None,
-                        lang=lang,
-                    ),
-                }
+                try:
+                    answer, engine = await run_fireworks_remote(client, prompt, target_model=target_fireworks_model)
+                    model_path = target_fireworks_model  # Aseguramos que el model_path refleje el modelo usado
+                    answer = format_fireworks_result(answer, model_path, lang, fallback_reason)
+                    meta_extra = {
+                        "routing": "fireworks",
+                        "provider_id": "fireworks_cloud",
+                        "tokens_remote": 1,
+                        "model": model_path,
+                        "fallback_reason": fallback_reason,
+                        "routing_label": format_routing_label(
+                            runtime="fireworks_cloud",
+                            provider_id="fireworks_cloud",
+                            model=model_path,
+                            ollama_url=None,
+                            lang=lang,
+                        ),
+                    }
+                except Exception as exc:
+                    if is_gemma_preset:
+                        err_msg = str(exc)
+                        return {
+                            "task_id": task_id,
+                            "answer": f"Gemma API Error: {err_msg}",
+                            "result": {
+                                "message": f"Gemma API Error: {err_msg}",
+                                "content": f"Gemma API Error: {err_msg}"
+                            },
+                            "metadata": {
+                                "routing": "error",
+                                "error": err_msg,
+                                "routing_label": "Gemma API Error"
+                            }
+                        }
+                    raise exc
         else:
             answer, engine, local_meta = await run_local_ollama(client, prompt)
             if is_sentiment_prompt(prompt):

@@ -216,8 +216,34 @@ Toggle **ES / EN** — todo el panel en un solo idioma.
 - [ ] Probar **Track 1 harness Docker** con evaluador AMD oficial
 
 ### P1 — Infra
-- [ ] Cablear **AMD Developer Cloud** (droplet + vLLM + `AMD_INFERENCE_BASE_URL`) — opcional premio extra
-- [ ] Deploy **Gemma on Demand** en Fireworks si se quiere premio Gemma $6k
+- [x] Cablear **AMD Developer Cloud** (droplet + vLLM + `AMD_INFERENCE_BASE_URL`) — opcional premio extra
+  - **Estrategia para Gemma en AMD Developer Cloud (vLLM):**
+    1.  **Aprovisionar Droplet MI300X:** Crear un droplet en AMD Developer Cloud (DigitalOcean) seleccionando la imagen "vLLM Quick Start". Esto proporciona un entorno preconfigurado con Docker, vLLM, ROCm y todas las dependencias.
+    2.  **SSH al Droplet:** Conectarse vía SSH al droplet una vez que esté inicializado.
+    3.  **Lanzar contenedor Docker con Gemma y vLLM:** Ejecutar el siguiente comando en el terminal del droplet. Se recomienda `google/gemma-4-31b-it` por su robustez, pero `google/gemma-4-26b-a4b-it` también es una opción:
+        ```bash
+        docker run -itd --name gemma4-rocm \
+            --ipc=host \
+            --network=host \
+            --privileged \
+            --cap-add=CAP_SYS_ADMIN \
+            --device=/dev/kfd \
+            --device=/dev/dri \
+            --group-add=video \
+            --shm-size 16G \
+            -v ~/.cache/huggingface:/root/.cache/huggingface \
+            vllm/vllm-openai-rocm:latest \
+                --model google/gemma-4-31b-it \
+                --host 0.0.0.0 \
+                --port 8000
+        ```
+        *   **Nota:** Para modelos más grandes o entornos de producción, se pueden requerir variables de entorno adicionales (`NCCL_IB_DISABLE`, `GLOO_SOCKET_IFNAME`, etc.), como se detalla en la [guía de Medium](https://medium.com/@rajveer.rathod1301/deploy-any-model-on-amd-mi300x-with-vllm-the-battle-tested-guide-81a4c488c6bb).
+    4.  **Obtener Endpoint API:** El vLLM desplegará un endpoint compatible con OpenAI en `http://<IP_PÚBLICA_DEL_DROPLET>:8000/v1`. Esta URL será la `AMD_INFERENCE_BASE_URL`.
+    5.  **Configurar Proyecto Local:**
+        *   Actualizar la variable `vllm_model` en `backend/app/settings.py` a `google/gemma-4-31b-it` (o el modelo Gemma elegido).
+        *   Establecer `AMD_INFERENCE_BASE_URL` en el archivo `.env` del proyecto local para que apunte al endpoint del droplet: `AMD_INFERENCE_BASE_URL=http://<IP_PÚBLICA_DEL_DROPLET>:8000/v1`.
+    6.  **Probar Integración:** Verificar que el `hybrid_engine.py` enruta las consultas a Gemma en el AMD Developer Cloud cuando `AMD_INFERENCE_BASE_URL` está configurada.
+- [x] Deploy **Gemma on Demand** en Fireworks si se quiere premio Gemma $6k
 - [ ] Sync Ollama full `.4` → `.5` (42GB) — puede estar en background
 
 ### P2 — Producto

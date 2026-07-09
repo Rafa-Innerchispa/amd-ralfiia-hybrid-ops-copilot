@@ -45,6 +45,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
     session_id: str | None = None
     lang: str = "es"
+    force_model: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -259,7 +260,7 @@ async def notify_gemma_activation():
 @app.post("/api/v1/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     sid = req.session_id or str(uuid.uuid4())
-    out = await orchestrator.delegate_sync(req.message, sid, lang=req.lang)
+    out = await orchestrator.delegate_sync(req.message, sid, lang=req.lang, force_model=req.force_model)
     return ChatResponse(
         session_id=out["session_id"],
         result=out.get("result"),
