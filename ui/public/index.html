@@ -171,6 +171,28 @@
         </div>
         <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaAmdCloudDesc">MI300X vLLM Droplet ($100 credits)</div>
       </div>
+      
+      <div class="card" style="border-style: dashed; border-color: var(--amber); margin-top: 1rem;">
+        <div style="font-weight: bold; font-size: 0.72rem; color: var(--amber); margin-bottom: 0.5rem;" data-i18n="gemmaSettingsTitle">⚙️ Gemma Settings (Internal)</div>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.68rem;">
+          <div>
+            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblFwKey">Fireworks API Key</label>
+            <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblFwModel">Gemma Model ID</label>
+            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;">
+              <option value="accounts/fireworks/models/gemma-4-31b-it">Gemma 4 31B IT</option>
+              <option value="accounts/fireworks/models/gemma-2-9b-it">Gemma 2 9B IT</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
+            <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+          </div>
+          <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.35rem; font-size: 0.68rem; margin-top: 0.2rem;" data-i18n="btnSaveSettings">Save Settings</button>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -238,6 +260,11 @@
         stepGemma: "↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa '🔔 NOTIFICAR GEMMA GPU' en la cabecera para alertar al equipo.",
         btnNotifyGemma: "🔔 NOTIFICAR GEMMA GPU",
         gemmaPanelTitle: "Backends Gemma GPU (Interno)",
+        gemmaSettingsTitle: "⚙️ Configuración Gemma (Interno)",
+        lblFwKey: "Fireworks API Key (Opcional)",
+        lblFwModel: "Gemma Model ID",
+        lblJupyterUrl: "Jupyter vLLM Base URL",
+        btnSaveSettings: "Guardar Configuración",
         gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Servidor Jupyter temporal en Radeon Cloud",
         gemmaAmdCloudDesc: "Droplet MI300X vLLM ($100 créditos)",
@@ -341,6 +368,11 @@
         stepGemma: "↳ Note: If you want to test local Gemma and the server is offline, click '🔔 NOTIFY GEMMA GPU' in the header to alert the team.",
         btnNotifyGemma: "🔔 NOTIFY GEMMA GPU",
         gemmaPanelTitle: "Gemma GPU Backends (Internal)",
+        gemmaSettingsTitle: "⚙️ Gemma Settings (Internal)",
+        lblFwKey: "Fireworks API Key (Optional)",
+        lblFwModel: "Gemma Model ID",
+        lblJupyterUrl: "Jupyter vLLM Base URL",
+        btnSaveSettings: "Save Settings",
         gemmaFwDesc: "Gemma-4-31b-it on Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Temporary Jupyter server on Radeon Cloud",
         gemmaAmdCloudDesc: "MI300X vLLM Droplet ($100 credits)",
@@ -482,6 +514,7 @@
     let logSeq = 0;
     let backendOk = false;
     let guideStep = 1;
+    let settingsLoaded = false;
 
     function t(k) { return (I18N[lang] || I18N.es)[k] || k; }
 
@@ -740,6 +773,17 @@
         const base_url = cred.amd_cloud?.inference_base_url || "";
         const isGemmaAmdReady = !!base_url;
 
+        if (!settingsLoaded && cred) {
+          document.getElementById("inputJupyterUrl").value = base_url;
+          if (fw.configured) {
+            document.getElementById("inputFwKey").placeholder = "•••••••••••• (Configured)";
+          }
+          if (fw.model) {
+            document.getElementById("selectFwModel").value = fw.model;
+          }
+          settingsLoaded = true;
+        }
+
         const pillFwGemma = document.getElementById("gemmaFwStatus");
         if (pillFwGemma) {
           if (isGemmaFwReady) {
@@ -851,6 +895,41 @@
         sendChat(msg, false, force);
       };
     });
+    
+    document.getElementById("btnSaveSettings").onclick = async () => {
+      const btn = document.getElementById("btnSaveSettings");
+      btn.disabled = true;
+      btn.textContent = lang === "es" ? "Guardando..." : "Saving...";
+      
+      const payload = {};
+      const keyVal = document.getElementById("inputFwKey").value.trim();
+      if (keyVal) {
+        payload.fireworks_api_key = keyVal;
+      }
+      payload.fireworks_model = document.getElementById("selectFwModel").value;
+      payload.amd_inference_base_url = document.getElementById("inputJupyterUrl").value.trim();
+      
+      try {
+        const r = await fetch("/api/v1/settings/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const res = await r.json();
+        if (res.ok) {
+          alert(lang === "es" ? "¡Configuración guardada y aplicada!" : "Settings saved and applied!");
+          poll();
+        } else {
+          alert("Error: " + (res.error || "unknown error"));
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = lang === "es" ? "Guardar Configuración" : "Save Settings";
+      }
+    };
+
     document.getElementById("btnShowcase").onclick = () => { showPresetDoc("showcase"); runShowcase(); };
 
     applyLang();

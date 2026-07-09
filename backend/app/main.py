@@ -254,6 +254,57 @@ async def notify_gemma_activation():
         return {"ok": False, "error": str(e)}
 
 
+class SettingsUpdateRequest(BaseModel):
+    fireworks_api_key: str | None = None
+    fireworks_model: str | None = None
+    amd_inference_base_url: str | None = None
+    amd_inference_model: str | None = None
+
+
+@app.post("/api/v1/settings/update")
+async def update_settings(req: SettingsUpdateRequest):
+    """Dynamically update settings and persist them to the local .env file."""
+    updates = {}
+    if req.fireworks_api_key is not None:
+        updates["FIREWORKS_API_KEY"] = req.fireworks_api_key
+        settings.fireworks_api_key = req.fireworks_api_key
+    if req.fireworks_model is not None:
+        updates["FIREWORKS_MODEL"] = req.fireworks_model
+        settings.fireworks_model = req.fireworks_model
+    if req.amd_inference_base_url is not None:
+        updates["AMD_INFERENCE_BASE_URL"] = req.amd_inference_base_url
+        settings.amd_inference_base_url = req.amd_inference_base_url
+    if req.amd_inference_model is not None:
+        updates["AMD_INFERENCE_MODEL"] = req.amd_inference_model
+        settings.amd_inference_model = req.amd_inference_model
+        
+    try:
+        from pathlib import Path
+        env_path = Path(__file__).resolve().parents[2] / ".env"
+        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        new_lines = []
+        keys_to_update = set(updates.keys())
+        
+        for line in lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and "=" in line:
+                parts = line.split("=", 1)
+                k = parts[0].strip()
+                if k in keys_to_update:
+                    new_lines.append(f"{k}={updates[k]}")
+                    keys_to_update.remove(k)
+                    continue
+            new_lines.append(line)
+            
+        for k in keys_to_update:
+            new_lines.append(f"{k}={updates[k]}")
+            
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        return {"ok": True, "message": "Settings updated and saved to .env!"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 # --- Track 3: A2A mesh + demo integrado ---
 
 
@@ -314,6 +365,7 @@ async def credits_status():
             **fw,
             "configured": bool(settings.fireworks_api_key),
             "base_url": settings.fireworks_api_base,
+            "model": settings.fireworks_model,
             "allowed_models": ALLOWED_MODELS,
             "default_complex": DEFAULT_COMPLEX_MODEL,
         },
