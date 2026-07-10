@@ -72,7 +72,7 @@ async def jupyter_health() -> dict[str, Any]:
     if not settings.amd_inference_base_url:
         return {"ok": False, "error": "URL no configurada"}
     try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(f"{settings.amd_inference_base_url.rstrip('/')}/models")
             if r.status_code == 200:
                 models = [m.get("id") for m in r.json().get("data", [])]
