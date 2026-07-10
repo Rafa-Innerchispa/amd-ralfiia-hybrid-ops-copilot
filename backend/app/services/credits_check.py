@@ -71,9 +71,10 @@ async def fireworks_health() -> dict[str, Any]:
 async def jupyter_health() -> dict[str, Any]:
     if not settings.amd_inference_base_url:
         return {"ok": False, "error": "URL no configurada"}
+    token_query = f"?token={settings.amd_inference_token}" if settings.amd_inference_token else ""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get(f"{settings.amd_inference_base_url.rstrip('/')}/models")
+            r = await client.get(f"{settings.amd_inference_base_url.rstrip('/')}/models{token_query}")
             if r.status_code == 200:
                 models = [m.get("id") for m in r.json().get("data", [])]
                 return {"ok": True, "models": models}

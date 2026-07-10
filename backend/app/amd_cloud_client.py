@@ -81,6 +81,8 @@ async def chat_inference(prompt: str, *, model: str | None = None) -> dict[str, 
     headers = {"Content-Type": "application/json"}
     if settings.amd_inference_api_key:
         headers["Authorization"] = f"Bearer {settings.amd_inference_api_key}"
+    
+    token_query = f"?token={settings.amd_inference_token}" if settings.amd_inference_token else ""
     payload = {
         "model": use_model,
         "messages": [{"role": "user", "content": prompt}],
@@ -88,7 +90,7 @@ async def chat_inference(prompt: str, *, model: str | None = None) -> dict[str, 
     }
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:
-            r = await client.post(f"{base}/chat/completions", json=payload, headers=headers)
+            r = await client.post(f"{base}/chat/completions{token_query}", json=payload, headers=headers)
             if r.status_code != 200:
                 return {
                     "ok": False,

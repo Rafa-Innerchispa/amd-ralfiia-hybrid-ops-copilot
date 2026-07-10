@@ -259,6 +259,7 @@ class SettingsUpdateRequest(BaseModel):
     fireworks_api_key: str | None = None
     fireworks_model: str | None = None
     amd_inference_base_url: str | None = None
+    amd_inference_token: str | None = None
     amd_inference_model: str | None = None
 
 
@@ -275,6 +276,9 @@ async def update_settings(req: SettingsUpdateRequest):
     if req.amd_inference_base_url is not None:
         updates["AMD_INFERENCE_BASE_URL"] = req.amd_inference_base_url
         settings.amd_inference_base_url = req.amd_inference_base_url
+    if req.amd_inference_token is not None:
+        updates["AMD_INFERENCE_TOKEN"] = req.amd_inference_token
+        settings.amd_inference_token = req.amd_inference_token
     if req.amd_inference_model is not None:
         updates["AMD_INFERENCE_MODEL"] = req.amd_inference_model
         settings.amd_inference_model = req.amd_inference_model
@@ -377,7 +381,10 @@ async def credits_status():
             "allowed_models": ALLOWED_MODELS,
             "default_complex": DEFAULT_COMPLEX_MODEL,
         },
-        "jupyter": jup,
+        "jupyter": {
+            **jup,
+            "token": settings.amd_inference_token,
+        },
         "amd_cloud": {
             **amd,
             "inference_base_url": settings.amd_inference_base_url or None,

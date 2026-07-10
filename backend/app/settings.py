@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     amd_cloud_api_base: str = "https://api.digitalocean.com/v2"
     amd_inference_base_url: str = ""
     amd_inference_api_key: str = "not-required"
+    amd_inference_token: str = ""
     amd_inference_model: str = "Qwen/Qwen2.5-1.5B-Instruct"
 
     harness_input_path: str = "/input/tasks.json"

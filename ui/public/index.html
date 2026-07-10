@@ -191,6 +191,10 @@
             <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
           </div>
           <div>
+            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblJupyterToken">Jupyter Token</label>
+            <input type="password" id="inputJupyterToken" placeholder="token..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+          </div>
+          <div>
             <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
             <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;">
               <option value="auto">Auto-detect (Jupyter > Fireworks)</option>
@@ -272,6 +276,7 @@
         lblFwKey: "Fireworks API Key (Opcional)",
         lblFwModel: "Gemma Model ID",
         lblJupyterUrl: "Jupyter vLLM Base URL",
+        lblJupyterToken: "Jupyter Token (Opcional)",
         lblGemmaTarget: "Destino de Ruteo de Gemma",
         btnSaveSettings: "Guardar Configuración",
         gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
@@ -381,6 +386,7 @@
         lblFwKey: "Fireworks API Key (Optional)",
         lblFwModel: "Gemma Model ID",
         lblJupyterUrl: "Jupyter vLLM Base URL",
+        lblJupyterToken: "Jupyter Token (Optional)",
         lblGemmaTarget: "Gemma Routing Target",
         btnSaveSettings: "Save Settings",
         gemmaFwDesc: "Gemma-4-31b-it on Fireworks (Deploy on Demand)",
@@ -793,6 +799,9 @@
           if (fw.configured) {
             document.getElementById("inputFwKey").placeholder = "•••••••••••• (Configured)";
           }
+          if (cred.jupyter && cred.jupyter.token) {
+            document.getElementById("inputJupyterToken").placeholder = "•••••••••••• (Configured)";
+          }
           if (fw.model) {
             document.getElementById("selectFwModel").value = fw.model;
           }
@@ -924,6 +933,10 @@
       const keyVal = document.getElementById("inputFwKey").value.trim();
       if (keyVal) {
         payload.fireworks_api_key = keyVal;
+      }
+      const tokVal = document.getElementById("inputJupyterToken").value.trim();
+      if (tokVal) {
+        payload.amd_inference_token = tokVal;
       }
       payload.fireworks_model = document.getElementById("selectFwModel").value;
       payload.amd_inference_base_url = document.getElementById("inputJupyterUrl").value.trim();
