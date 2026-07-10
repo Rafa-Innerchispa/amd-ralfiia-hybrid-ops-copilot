@@ -786,7 +786,7 @@
 
         const isGemmaFwReady = fw.gemma_deployed && fw.gemma_deployed.length > 0;
         const base_url = cred.amd_cloud?.inference_base_url || "";
-        const isGemmaAmdReady = !!base_url;
+        const isGemmaAmdReady = cred.jupyter && cred.jupyter.ok;
 
         if (!settingsLoaded && cred) {
           document.getElementById("inputJupyterUrl").value = base_url;
@@ -812,7 +812,7 @@
 
         const pillJupyterGemma = document.getElementById("gemmaJupyterStatus");
         if (pillJupyterGemma) {
-          if (base_url && (base_url.includes("radeon-global") || base_url.includes("notebooks.amd.com") || base_url.includes("192.168.1.4"))) {
+          if (isGemmaAmdReady) {
             pillJupyterGemma.textContent = "ACTIVE";
             pillJupyterGemma.className = "pill on";
           } else {
@@ -823,7 +823,8 @@
 
         const pillAmdCloudGemma = document.getElementById("gemmaAmdCloudStatus");
         if (pillAmdCloudGemma) {
-          if (base_url && !base_url.includes("radeon-global") && !base_url.includes("notebooks.amd.com") && !base_url.includes("192.168.1.4")) {
+          const isAmdCloudReady = base_url && !base_url.includes("radeon-global") && !base_url.includes("notebooks.amd.com") && !base_url.includes("192.168.1.4");
+          if (isAmdCloudReady) {
             pillAmdCloudGemma.textContent = "ACTIVE";
             pillAmdCloudGemma.className = "pill on";
           } else {
