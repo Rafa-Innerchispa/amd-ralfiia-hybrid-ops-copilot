@@ -197,7 +197,7 @@ class RootOrchestrator:
         mongo_store.append_event(record)
 
     async def run_async(
-        self, user_message: str, session_id: str | None = None, lang: str = "es", force_model: str | None = None
+        self, user_message: str, session_id: str | None = None, lang: str = "es", force_model: str | None = None, preferred_gemma_backend: str | None = "auto"
     ) -> AsyncIterator[Event]:
         """Process real-time async event stream for UI / ADK consumers."""
         state = self.sessions.get_or_create(session_id)
@@ -220,7 +220,13 @@ class RootOrchestrator:
 
             task_id = f"chat-{sid[:8]}"
             try:
-                row = await process_single_task(task_id, user_message, lang=lang, force_model=force_model)
+                row = await process_single_task(
+                    task_id, 
+                    user_message, 
+                    lang=lang, 
+                    force_model=force_model, 
+                    preferred_gemma_backend=preferred_gemma_backend
+                )
                 answer = row.get("answer", "")
                 meta = row.get("metadata", {})
                 client_dict = {
@@ -285,10 +291,10 @@ class RootOrchestrator:
             self._log_event("delegation_failed", err)
 
     async def delegate_sync(
-        self, user_message: str, session_id: str | None = None, lang: str = "es", force_model: str | None = None
+        self, user_message: str, session_id: str | None = None, lang: str = "es", force_model: str | None = None, preferred_gemma_backend: str | None = "auto"
     ) -> dict[str, Any]:
         final: dict[str, Any] = {"events": [], "session_id": session_id}
-        async for ev in self.run_async(user_message, session_id, lang=lang, force_model=force_model):
+        async for ev in self.run_async(user_message, session_id, lang=lang, force_model=force_model, preferred_gemma_backend=preferred_gemma_backend):
             final["events"].append({"type": ev.type, "data": ev.data, "ts": ev.ts})
             if ev.type == "delegation_completed":
                 final["result"] = ev.data.get("result")

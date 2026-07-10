@@ -66,3 +66,17 @@ async def fireworks_health() -> dict[str, Any]:
             }
     except Exception as exc:
         return {"ok": False, "configured": True, "error": str(exc)}
+
+
+async def jupyter_health() -> dict[str, Any]:
+    if not settings.amd_inference_base_url:
+        return {"ok": False, "error": "URL no configurada"}
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            r = await client.get(f"{settings.amd_inference_base_url.rstrip('/')}/models")
+            if r.status_code == 200:
+                models = [m.get("id") for m in r.json().get("data", [])]
+                return {"ok": True, "models": models}
+            return {"ok": False, "error": f"HTTP {r.status_code}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

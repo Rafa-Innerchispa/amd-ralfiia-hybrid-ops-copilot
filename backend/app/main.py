@@ -46,6 +46,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     lang: str = "es"
     force_model: str | None = None
+    preferred_gemma_backend: str | None = "auto"
 
 
 class ChatResponse(BaseModel):
@@ -311,7 +312,13 @@ async def update_settings(req: SettingsUpdateRequest):
 @app.post("/api/v1/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     sid = req.session_id or str(uuid.uuid4())
-    out = await orchestrator.delegate_sync(req.message, sid, lang=req.lang, force_model=req.force_model)
+    out = await orchestrator.delegate_sync(
+        req.message, 
+        sid, 
+        lang=req.lang, 
+        force_model=req.force_model, 
+        preferred_gemma_backend=req.preferred_gemma_backend
+    )
     return ChatResponse(
         session_id=out["session_id"],
         result=out.get("result"),
@@ -353,11 +360,12 @@ async def routing_stats():
 @app.get("/api/v1/credits/status")
 async def credits_status():
     from app.amd_cloud_client import account_health
-    from app.services.credits_check import fireworks_health, ollama_health
+    from app.services.credits_check import fireworks_health, ollama_health, jupyter_health
 
     fw = await fireworks_health()
     ol = await ollama_health()
     amd = await account_health()
+    jup = await jupyter_health()
     sq = await smart_quoter_bridge.smart_quoter_health()
     services = await orchestrator.list_registered_services()
     return {
@@ -369,6 +377,7 @@ async def credits_status():
             "allowed_models": ALLOWED_MODELS,
             "default_complex": DEFAULT_COMPLEX_MODEL,
         },
+        "jupyter": jup,
         "amd_cloud": {
             **amd,
             "inference_base_url": settings.amd_inference_base_url or None,

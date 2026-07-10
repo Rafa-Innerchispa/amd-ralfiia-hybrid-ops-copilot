@@ -134,7 +134,13 @@ async def run_fireworks_remote(
         return f"Failed to connect to AMD Cloud proxy: {exc}", "Network Error"
 
 
-async def process_single_task(task_id: str, prompt: str, lang: str = "es", force_model: str | None = None) -> dict[str, Any]:
+async def process_single_task(
+    task_id: str, 
+    prompt: str, 
+    lang: str = "es", 
+    force_model: str | None = None, 
+    preferred_gemma_backend: str | None = "auto"
+) -> dict[str, Any]:
     lang = normalize_lang(lang)
     async with httpx.AsyncClient() as client:
         is_gemma_preset = (force_model == "gemma")
@@ -176,7 +182,9 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es", force
                     )
                     target_fireworks_model = "deepseek-v4-pro"
 
-            if settings.amd_inference_base_url:
+            run_jupyter = settings.amd_inference_base_url and preferred_gemma_backend != "fireworks"
+            
+            if run_jupyter:
                 try:
                     from app.amd_cloud_client import chat_inference
 
@@ -222,9 +230,27 @@ async def process_single_task(task_id: str, prompt: str, lang: str = "es", force
                                 lang=lang,
                             ),
                         }
-                except Exception:
+                except Exception as e:
+                    if preferred_gemma_backend == "jupyter":
+                        # If forced, return error directly instead of falling back
+                        err_msg = f"Jupyter vLLM error: {str(e)}"
+                        return {
+                            "task_id": task_id,
+                            "answer": f"ERROR: {err_msg}",
+                            "result": {"message": f"ERROR: {err_msg}", "content": f"ERROR: {err_msg}"},
+                            "metadata": {"routing": "error", "error": err_msg, "routing_label": "Jupyter Error"}
+                        }
                     pass
+
             if not is_cloud_vllm:
+                if preferred_gemma_backend == "jupyter":
+                    err_msg = "Jupyter vLLM no está configurado o falló, y se ha forzado esta opción."
+                    return {
+                        "task_id": task_id,
+                        "answer": f"ERROR: {err_msg}",
+                        "result": {"message": f"ERROR: {err_msg}", "content": f"ERROR: {err_msg}"},
+                        "metadata": {"routing": "error", "error": err_msg, "routing_label": "Jupyter Offline"}
+                    }
                 try:
                     answer, engine = await run_fireworks_remote(client, prompt, target_model=target_fireworks_model)
                     model_path = target_fireworks_model  # Aseguramos que el model_path refleje el modelo usado

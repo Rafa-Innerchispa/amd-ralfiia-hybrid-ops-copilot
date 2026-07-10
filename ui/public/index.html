@@ -190,6 +190,14 @@
             <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
             <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
           </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
+            <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;">
+              <option value="auto">Auto-detect (Jupyter > Fireworks)</option>
+              <option value="fireworks">Force Fireworks (Option A)</option>
+              <option value="jupyter">Force Jupyter Lab (Option B)</option>
+            </select>
+          </div>
           <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.35rem; font-size: 0.68rem; margin-top: 0.2rem;" data-i18n="btnSaveSettings">Save Settings</button>
         </div>
       </div>
@@ -264,6 +272,7 @@
         lblFwKey: "Fireworks API Key (Opcional)",
         lblFwModel: "Gemma Model ID",
         lblJupyterUrl: "Jupyter vLLM Base URL",
+        lblGemmaTarget: "Destino de Ruteo de Gemma",
         btnSaveSettings: "Guardar Configuración",
         gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Servidor Jupyter temporal en Radeon Cloud",
@@ -372,6 +381,7 @@
         lblFwKey: "Fireworks API Key (Optional)",
         lblFwModel: "Gemma Model ID",
         lblJupyterUrl: "Jupyter vLLM Base URL",
+        lblGemmaTarget: "Gemma Routing Target",
         btnSaveSettings: "Save Settings",
         gemmaFwDesc: "Gemma-4-31b-it on Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Temporary Jupyter server on Radeon Cloud",
@@ -584,7 +594,7 @@
       return d.result?.content || d.result?.message || "";
     }
 
-    async function sendChat(text, silent, forceModel) {
+    async function sendChat(text, silent, forceModel, preferredGemmaBackend) {
       if (!text.trim()) return;
       if (!silent) {
         answerEl.className = "answer-box";
@@ -596,7 +606,12 @@
         const d = await jfetch("/api/v1/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, lang: lang, force_model: forceModel }),
+          body: JSON.stringify({ 
+            message: text, 
+            lang: lang, 
+            force_model: forceModel,
+            preferred_gemma_backend: preferredGemmaBackend || document.getElementById("selectGemmaTarget").value
+          }),
         }, t("delegateLbl"));
         const formatted = formatAnswer(d);
         const ev = (d.events || []).find(e => e.type === "routing_decision");
@@ -880,9 +895,12 @@
     }
 
     document.getElementById("clearLog").onclick = () => { term.innerHTML = ""; logSeq = 0; log(t("logCleared"), "hi"); };
-    document.getElementById("send").onclick = () => sendChat(document.getElementById("input").value);
+    document.getElementById("send").onclick = () => sendChat(document.getElementById("input").value, false, null, document.getElementById("selectGemmaTarget").value);
     document.getElementById("input").addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(document.getElementById("input").value); }
+      if (e.key === "Enter" && !e.shiftKey) { 
+        e.preventDefault(); 
+        sendChat(document.getElementById("input").value, false, null, document.getElementById("selectGemmaTarget").value); 
+      }
     });
     document.querySelectorAll("[data-msg-es]").forEach(b => {
       b.onclick = () => {
