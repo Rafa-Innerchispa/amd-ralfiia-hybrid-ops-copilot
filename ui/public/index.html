@@ -205,6 +205,30 @@
           <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.35rem; font-size: 0.68rem; margin-top: 0.2rem;" data-i18n="btnSaveSettings">Save Settings</button>
         </div>
       </div>
+
+      <!-- Interactive Setup Guide -->
+      <div class="card" style="border: 1px solid var(--border); margin-top: 1rem; background: rgba(255, 255, 255, 0.02);">
+        <div style="font-weight: bold; font-size: 0.72rem; color: var(--teal); margin-bottom: 0.4rem;" data-i18n="setupGuideTitle">📖 Hardware & Setup Guide</div>
+        <div style="font-size: 0.65rem; line-height: 1.35; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div>
+            <b style="color: var(--amber);">Option A (Fireworks AI)</b>
+            <ol style="margin: 0.15rem 0 0 0.8rem; padding: 0;">
+              <li>Log in to <a href="https://app.fireworks.ai" target="_blank" style="color: var(--teal);">app.fireworks.ai</a></li>
+              <li>Under Models, find <b>gemma-2-9b-it</b> and click <b>Deploy</b></li>
+              <li>Copy your API Key, paste it above, select <b>Force Fireworks</b>, and save.</li>
+            </ol>
+          </div>
+          <div style="border-top: 1px solid var(--border); padding-top: 0.4rem;">
+            <b style="color: var(--amber);">Option B (Jupyter CPU/ROCm)</b>
+            <ol style="margin: 0.15rem 0 0 0.8rem; padding: 0;">
+              <li>Open your Jupyter instance page</li>
+              <li>Run <code style="background: var(--border); padding: 0 0.15rem;">jupyter server list</code> to find your token (e.g. <b>amd-oneclick</b>)</li>
+              <li>Start server: <code style="background: var(--border); padding: 0 0.15rem;">python3 gemma_api.py</code></li>
+              <li>Paste URL, Token, select <b>Force Jupyter</b>, and save.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -279,6 +303,7 @@
         lblJupyterToken: "Jupyter Token (Opcional)",
         lblGemmaTarget: "Destino de Ruteo de Gemma",
         btnSaveSettings: "Guardar Configuración",
+        setupGuideTitle: "📖 Guía de Configuración",
         gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Servidor Jupyter temporal en Radeon Cloud",
         gemmaAmdCloudDesc: "Droplet MI300X vLLM ($100 créditos)",
@@ -389,6 +414,7 @@
         lblJupyterToken: "Jupyter Token (Optional)",
         lblGemmaTarget: "Gemma Routing Target",
         btnSaveSettings: "Save Settings",
+        setupGuideTitle: "📖 Hardware & Setup Guide",
         gemmaFwDesc: "Gemma-4-31b-it on Fireworks (Deploy on Demand)",
         gemmaJupyterDesc: "Temporary Jupyter server on Radeon Cloud",
         gemmaAmdCloudDesc: "MI300X vLLM Droplet ($100 credits)",
@@ -837,7 +863,7 @@
             pillAmdCloudGemma.textContent = "ACTIVE";
             pillAmdCloudGemma.className = "pill on";
           } else {
-            pillAmdCloudGemma.textContent = "STANDBY";
+            pillAmdCloudGemma.textContent = lang === "es" ? "USO FUTURO" : "FUTURE USE";
             pillAmdCloudGemma.className = "pill off";
           }
         }
