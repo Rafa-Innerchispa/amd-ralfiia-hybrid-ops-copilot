@@ -11,7 +11,7 @@ COPY track1_agent/run_harness.py .
 
 ENV PYTHONPATH=/app
 
-RUN mkdir -p /input /output
+RUN mkdir -p /input /output && chmod 777 /input /output
 
 ENV HARNESS_INPUT_PATH=/input/tasks.json \
     HARNESS_OUTPUT_PATH=/output/results.json
