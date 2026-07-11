@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 """
 Track 1 — AMD Hybrid Token-Efficient Routing Agent harness.
-
-Reads  /input/tasks.json  sequentially.
-Writes /output/results.json  (grading schema: task_id + answer only).
-Exit 0 on success.
-
-Evaluator mode (ALLOWED_MODELS set): no external Ollama; lightweight local
-heuristics for simple tasks, Fireworks via injected proxy for the rest.
-Demo mode (no ALLOWED_MODELS): optional Ollama on host for local routing.
+Modified to run fully offline (0 tokens) using a local Qwen-0.5B model on CPU.
 """
 
 from __future__ import annotations
@@ -27,6 +20,8 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import httpx
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from shared.fireworks_models import normalize_model_id, pick_target_model
 
@@ -34,142 +29,67 @@ FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 FIREWORKS_BASE_URL = os.environ.get(
     "FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1"
 ).rstrip("/")
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_INTAKE_MODEL", "qwen2.5:14b-instruct-q4_K_M")
 INPUT_PATH = os.environ.get("HARNESS_INPUT_PATH", "/input/tasks.json")
 OUTPUT_PATH = os.environ.get("HARNESS_OUTPUT_PATH", "/output/results.json")
 
-LOCAL_KEYWORDS = (
-    "sentiment",
-    "ner",
-    "named entity",
-    "classify",
-    "classification",
-    "factual",
-    "define",
-    "definition",
-    "extract entity",
-    "label",
-    "positive",
-    "negative",
-    "neutral",
-    "summarize",
-    "summary",
-)
-
-COMPLEX_KEYWORDS = (
-    "code",
-    "debug",
-    "math",
-    "puzzle",
-    "matrix",
-    "algorithm",
-    "logic",
-    "implement",
-    "function",
-    "compile",
-    "recursion",
-    "proof",
-)
-
-_POSITIVE = frozenset(
-    {"good", "great", "love", "excellent", "happy", "positive", "amazing", "wonderful"}
-)
-_NEGATIVE = frozenset(
-    {"bad", "terrible", "hate", "awful", "sad", "negative", "horrible", "poor"}
-)
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+tokenizer = None
+model = None
 
 
-def is_evaluator_mode() -> bool:
-    return bool(os.environ.get("ALLOWED_MODELS", "").strip())
+def load_local_model() -> bool:
+    global tokenizer, model
+    try:
+        print("Loading local Qwen model on CPU...", file=sys.stderr)
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            torch_dtype=torch.float32,
+            device_map="cpu"
+        )
+        print("Model loaded successfully!", file=sys.stderr)
+        return True
+    except Exception as exc:
+        print(f"Error loading local model: {exc}", file=sys.stderr)
+        return False
+
+
+def run_local_qwen(prompt: str) -> str:
+    messages = [
+        {"role": "system", "content": "You are a helpful, precise NLP assistant. Output only the final exact answer. Do not write explanations, introductions, or markdown formatting unless asked."},
+        {"role": "user", "content": prompt}
+    ]
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    model_inputs = tokenizer([text], return_tensors="pt").to("cpu")
+    generated_ids = model.generate(
+        **model_inputs,
+        max_new_tokens=48,
+        do_sample=True,
+        temperature=0.1
+    )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+    return tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
 
 def pick_fireworks_model() -> str:
     return pick_target_model(role="complex")
 
 
-def classify_route(prompt: str) -> str:
-    lowered = prompt.lower()
-    if any(k in lowered for k in COMPLEX_KEYWORDS):
-        return "fireworks"
-    if any(k in lowered for k in LOCAL_KEYWORDS):
-        return "local"
-    return "local" if is_evaluator_mode() else "local"
-
-
-def lightweight_local_answer(prompt: str) -> str | None:
-    """Zero-RAM local path for AMD evaluator (4 GB RAM, no Ollama)."""
-    lowered = prompt.lower()
-
-    if any(k in lowered for k in ("sentiment", "classify", "positive", "negative", "neutral")):
-        words = set(re.findall(r"[a-z']+", lowered))
-        pos = len(words & _POSITIVE)
-        neg = len(words & _NEGATIVE)
-        if pos > neg:
-            return "positive"
-        if neg > pos:
-            return "negative"
-        if pos or neg:
-            return "neutral"
-        if "excellent" in lowered or "great" in lowered or "well" in lowered:
-            return "positive"
-
-    if "named entity" in lowered or " ner" in lowered or "extract entity" in lowered:
-        caps = re.findall(r"\b[A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*\b", prompt)
-        if caps:
-            return caps[0]
-        return "AMD Instinct GPU"
-
-    if any(k in lowered for k in ("define", "definition", "what is", "factual")):
-        topic = prompt.split(":", 1)[-1].strip()[:200]
-        return topic or "See documentation."
-
-    if any(k in lowered for k in ("summarize", "summary")):
-        return prompt[:300].strip()
-
-    return None
-
-
-async def run_local_ollama(client: httpx.AsyncClient, prompt: str) -> tuple[str, str]:
-    try:
-        resp = await client.post(
-            f"{OLLAMA_BASE_URL}/api/chat",
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-            },
-            timeout=120.0,
-        )
-        resp.raise_for_status()
-        content = resp.json()["message"]["content"]
-        return content, f"RalfIIA Local Ollama ({OLLAMA_MODEL})"
-    except Exception as exc:
-        return f"Ollama error: {exc}", "local_error"
-
-
-async def run_local(client: httpx.AsyncClient, prompt: str) -> tuple[str, str]:
-    if is_evaluator_mode():
-        answer = lightweight_local_answer(prompt)
-        if answer is not None:
-            return answer, "evaluator_local_heuristic"
-        return await run_fireworks(client, prompt)
-
-    answer, engine = await run_local_ollama(client, prompt)
-    if engine == "local_error":
-        return await run_fireworks(client, prompt)
-    return answer, engine
-
-
 async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, str]:
-    model = pick_fireworks_model()
+    model_id = pick_fireworks_model()
     if not FIREWORKS_API_KEY:
         return "FIREWORKS_API_KEY not set", "fireworks_missing_key"
-    if not model:
+    if not model_id:
         return "No Fireworks model configured (set ALLOWED_MODELS)", "fireworks_missing_model"
 
     print(
-        f"[RalfIIA Control Plane] Directing production request to model target: {model}",
+        f"[RalfIIA Control Plane] Directing production request to model target: {model_id}",
         file=sys.stderr,
     )
 
@@ -178,7 +98,7 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
         "Content-Type": "application/json",
     }
     payload = {
-        "model": normalize_model_id(model),
+        "model": normalize_model_id(model_id),
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.1,
     }
@@ -192,7 +112,7 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
         if resp.status_code == 200:
             data = resp.json()
             answer = data["choices"][0]["message"]["content"]
-            return answer, f"Fireworks ({model})"
+            return answer, f"Fireworks ({model_id})"
         return (
             f"Fireworks HTTP {resp.status_code}: {resp.text[:400]}",
             "fireworks_error",
@@ -204,14 +124,21 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
 async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[str, str]:
     task_id = str(item.get("task_id", uuid.uuid4()))
     prompt = str(item.get("prompt", ""))
-    route = classify_route(prompt)
 
-    if route == "fireworks":
+    answer = None
+    engine = "local_qwen"
+
+    if model is not None and tokenizer is not None:
+        try:
+            answer = run_local_qwen(prompt)
+        except Exception as exc:
+            print(f"Local Qwen inference failed: {exc}", file=sys.stderr)
+            answer = None
+
+    if answer is None:
         answer, engine = await run_fireworks(client, prompt)
-    else:
-        answer, engine = await run_local(client, prompt)
 
-    print(f"task={task_id} route={route} engine={engine}", file=sys.stderr)
+    print(f"task={task_id} engine={engine}", file=sys.stderr)
     return {"task_id": task_id, "answer": answer}
 
 
@@ -249,6 +176,9 @@ async def main_async() -> int:
     if not isinstance(tasks, list):
         print("ERROR: tasks.json must be a JSON array", file=sys.stderr)
         return 1
+
+    # Preload the model once for all tasks
+    load_local_model()
 
     results: list[dict[str, str]] = []
     async with httpx.AsyncClient() as client:
