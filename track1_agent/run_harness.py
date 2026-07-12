@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Track 1 — AMD Hybrid Token-Efficient Routing Agent harness.
-Modified to run fully offline (0 tokens) using a local Qwen-0.5B model on CPU.
+Modified to run fully offline (0 tokens) using a local Qwen-0.5B model on CPU
+with Vector-Free RAG (FastRAG) injection from MongoDB cached messages.
 """
 
 from __future__ import annotations
@@ -36,6 +37,48 @@ MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 tokenizer = None
 model = None
 
+# Load cached agent messages for FastRAG
+MESSAGES_DUMP_PATH = os.path.join(os.path.dirname(__file__), "agent_messages.json")
+agent_messages: list[dict[str, Any]] = []
+
+if os.path.isfile(MESSAGES_DUMP_PATH):
+    try:
+        with open(MESSAGES_DUMP_PATH, encoding="utf-8") as f:
+            agent_messages = json.load(f)
+        print(f"Loaded {len(agent_messages)} cached agent messages for FastRAG.", file=sys.stderr)
+    except Exception as e:
+        print(f"Error loading cached agent messages: {e}", file=sys.stderr)
+
+
+def perform_fastrag(prompt: str) -> str:
+    """Perform keyword syntactic search on cached messages (FastRAG)."""
+    key_terms = ["rocm", "hip", "mi300x", "memory", "hipify"]
+    lowered_prompt = prompt.lower()
+    matched_terms = [t for t in key_terms if t in lowered_prompt]
+    
+    if not matched_terms:
+        return ""
+        
+    scored_messages = []
+    for msg in agent_messages:
+        content = str(msg.get("content", ""))
+        content_lower = content.lower()
+        score = sum(content_lower.count(t) for t in matched_terms)
+        if score > 0:
+            scored_messages.append((score, content))
+            
+    # Sort by score descending and take top 5
+    scored_messages.sort(key=lambda x: x[0], reverse=True)
+    top_messages = [content for score, content in scored_messages[:5]]
+    
+    if not top_messages:
+        return ""
+        
+    context = "\n=== AMD ROCm & Hardware Operational Context (Retrieved Ground Truth) ===\n"
+    for idx, msg in enumerate(top_messages):
+        context += f"Reference {idx + 1}:\n{msg}\n\n"
+    return context
+
 
 def load_local_model() -> bool:
     global tokenizer, model
@@ -67,7 +110,7 @@ def run_local_qwen(prompt: str) -> str:
     model_inputs = tokenizer([text], return_tensors="pt").to("cpu")
     generated_ids = model.generate(
         **model_inputs,
-        max_new_tokens=48,
+        max_new_tokens=64,
         do_sample=True,
         temperature=0.1
     )
@@ -125,18 +168,26 @@ async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[
     task_id = str(item.get("task_id", uuid.uuid4()))
     prompt = str(item.get("prompt", ""))
 
+    # Perform FastRAG search
+    rag_context = perform_fastrag(prompt)
+    if rag_context:
+        enriched_prompt = f"Use the following AMD ROCm & hardware operational context to answer the user query. If relevant, answer only based on the provided context.\n{rag_context}\nUser Query: {prompt}"
+        print(f"Injecting FastRAG context for task={task_id}", file=sys.stderr)
+    else:
+        enriched_prompt = prompt
+
     answer = None
     engine = "local_qwen"
 
     if model is not None and tokenizer is not None:
         try:
-            answer = run_local_qwen(prompt)
+            answer = run_local_qwen(enriched_prompt)
         except Exception as exc:
             print(f"Local Qwen inference failed: {exc}", file=sys.stderr)
             answer = None
 
     if answer is None:
-        answer, engine = await run_fireworks(client, prompt)
+        answer, engine = await run_fireworks(client, enriched_prompt)
 
     print(f"task={task_id} engine={engine}", file=sys.stderr)
     return {"task_id": task_id, "answer": answer}

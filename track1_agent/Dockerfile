@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY track1_agent/download_model.py .
 RUN python download_model.py
 
+COPY track1_agent/agent_messages.json .
 COPY track1_agent/run_harness.py .
 
 RUN mkdir -p /input /output && chmod 777 /input /output
