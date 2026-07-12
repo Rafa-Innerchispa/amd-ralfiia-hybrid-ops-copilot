@@ -28,8 +28,14 @@ if str(_APP) not in sys.path:
     sys.path.insert(0, str(_APP))
 
 import httpx
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from shared.fireworks_models import normalize_model_id, pick_target_model
+
+MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+tokenizer = None
+model = None
 
 FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 FIREWORKS_BASE_URL = os.environ.get(
@@ -37,11 +43,6 @@ FIREWORKS_BASE_URL = os.environ.get(
 ).rstrip("/")
 INPUT_PATH = os.environ.get("HARNESS_INPUT_PATH", "/input/tasks.json")
 OUTPUT_PATH = os.environ.get("HARNESS_OUTPUT_PATH", "/output/results.json")
-LOCAL_MODEL_PATH = os.environ.get(
-    "LOCAL_MODEL_PATH", "/app/models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
-)
-LOCAL_N_THREADS = int(os.environ.get("LOCAL_N_THREADS", "2"))
-LOCAL_MAX_TOKENS = int(os.environ.get("LOCAL_MAX_TOKENS", "96"))
 ZERO_TOKEN_ONLY = os.environ.get("ZERO_TOKEN_MODE", os.environ.get("ZERO_TOKEN_ONLY", "0")).strip() in {
     "1",
     "true",
@@ -364,41 +365,29 @@ def run_local_heuristics(prompt: str) -> str | None:
 
 
 def get_local_llm():
-    """Lazy-load GGUF once. Safe if llama_cpp or weights are missing."""
-    global _LOCAL_LLM, _LOCAL_LLM_TRIED
-    if _LOCAL_LLM_TRIED:
-        return _LOCAL_LLM
-    _LOCAL_LLM_TRIED = True
-
-    if not os.path.isfile(LOCAL_MODEL_PATH):
-        print(f"[local] model missing: {LOCAL_MODEL_PATH}", file=sys.stderr)
-        return None
+    """Lazy-load PyTorch model once. Safe on CPU environments."""
+    global tokenizer, model
+    if model is not None:
+        return model, tokenizer
 
     try:
-        from llama_cpp import Llama
-    except Exception as exc:
-        print(f"[local] llama_cpp unavailable: {exc}", file=sys.stderr)
-        return None
-
-    try:
-        print(f"[local] loading {LOCAL_MODEL_PATH} threads={LOCAL_N_THREADS}", file=sys.stderr)
-        _LOCAL_LLM = Llama(
-            model_path=LOCAL_MODEL_PATH,
-            n_ctx=2048,
-            n_threads=LOCAL_N_THREADS,
-            n_batch=256,
-            verbose=False,
+        print("Loading local Qwen model on CPU (bfloat16)...", file=sys.stderr)
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME,
+            torch_dtype=torch.bfloat16,  # 1.0 GB RAM footprint on CPU
+            local_files_only=True
         )
-        print("[local] ready", file=sys.stderr)
+        print("Model loaded successfully!", file=sys.stderr)
+        return model, tokenizer
     except Exception as exc:
-        print(f"[local] load failed: {exc}", file=sys.stderr)
-        _LOCAL_LLM = None
-    return _LOCAL_LLM
+        print(f"Error loading local model: {exc}", file=sys.stderr)
+        return None, None
 
 
 def run_local_llm(prompt: str) -> str | None:
-    llm = get_local_llm()
-    if llm is None:
+    model_obj, tok = get_local_llm()
+    if model_obj is None or tok is None:
         return None
 
     # Task-specific micro prompts improve 0.5B reliability a lot
@@ -431,14 +420,25 @@ def run_local_llm(prompt: str) -> str | None:
         {"role": "user", "content": user},
     ]
     try:
-        out = llm.create_chat_completion(
-            messages=messages,
-            temperature=0.0,
-            max_tokens=LOCAL_MAX_TOKENS,
-            top_p=1.0,
+        text = tok.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
         )
-        content = out["choices"][0]["message"]["content"]
-        answer = str(content or "").strip()
+        model_inputs = tok([text], return_tensors="pt").to("cpu")
+        
+        # Optimize inference: greedy decoding (do_sample=False) + torch.inference_mode()
+        with torch.inference_mode():
+            generated_ids = model_obj.generate(
+                **model_inputs,
+                max_new_tokens=64,
+                do_sample=False,
+                pad_token_id=tok.eos_token_id
+            )
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+        ]
+        answer = tok.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
         if not answer:
             return None
         # Keep first line only; strip chatty prefixes

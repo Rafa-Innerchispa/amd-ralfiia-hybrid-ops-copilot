@@ -3,25 +3,17 @@ FROM --platform=linux/amd64 python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+ENV HF_HOME=/app/hf_cache
 
 COPY shared/ /app/shared/
 COPY track1_agent/requirements.txt .
 
-# Prebuilt CPU manylinux wheel (no gcc / no cmake)
 RUN pip install --no-cache-dir -U pip \
-    && pip install --no-cache-dir httpx \
-    && pip install --no-cache-dir llama-cpp-python==0.3.34 \
-        --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+    && pip install --no-cache-dir -r requirements.txt
 
-# Bake Qwen2.5-0.5B Instruct Q4_K_M (~400MB) for offline 0-token NLP
-RUN mkdir -p /app/models \
-    && curl -L --fail --retry 3 \
-        -o /app/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
-        "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf" \
-    && chmod -R a+rX /app/models
+# Pre-download and cache Qwen model weights
+COPY track1_agent/download_model.py .
+RUN python download_model.py && chmod -R 777 /app/hf_cache
 
 COPY track1_agent/run_harness.py .
 COPY track1_agent/agent_messages.json .
@@ -33,9 +25,6 @@ RUN mkdir -p /input /output \
 ENV PYTHONPATH=/app \
     HARNESS_INPUT_PATH=/input/tasks.json \
     HARNESS_OUTPUT_PATH=/output/results.json \
-    LOCAL_MODEL_PATH=/app/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
-    LOCAL_N_THREADS=2 \
-    LOCAL_MAX_TOKENS=96 \
     ZERO_TOKEN_MODE=0
 
 USER nobody
