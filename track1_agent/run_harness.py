@@ -66,6 +66,11 @@ COMPLEX_KEYWORDS = (
     "write a python",
     "write a program",
     "fix this",
+    "rocm",
+    "hip",
+    "mi300x",
+    "hipify",
+    "memory",
 )
 
 _POSITIVE_STEMS = (
@@ -170,6 +175,63 @@ def _extract_quoted_or_after_colon(prompt: str) -> str:
         if match:
             return match.group(1).strip()
     return prompt
+
+
+def perform_fastrag(prompt: str) -> str:
+    """Perform keyword syntactic search on MongoDB ralfia_agent_messages or local JSON fallback."""
+    key_terms = ["rocm", "hip", "mi300x", "memory", "hipify"]
+    lowered_prompt = prompt.lower()
+    matched_terms = [t for t in key_terms if t in lowered_prompt]
+    if not matched_terms:
+        return ""
+
+    messages = []
+    # 1) Try real-time MongoDB query first
+    try:
+        from pymongo import MongoClient
+        mongo_uri = os.environ.get("MONGO_URI", "mongodb://127.0.0.1:27017")
+        db_name = os.environ.get("MONGO_DB", "pcdoctor_swarm")
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
+        db = client[db_name]
+        col = db["ralfia_agent_messages"]
+        query = {"$or": [{"content": {"$regex": re.escape(t), "$options": "i"}} for t in matched_terms]}
+        mongo_docs = list(col.find(query))
+        messages = [{"content": doc.get("content", "")} for doc in mongo_docs if doc.get("content")]
+    except Exception as e:
+        print(f"[RAG] MongoDB connect failed or skipped ({e}), falling back to local JSON cache", file=sys.stderr)
+
+    # 2) Fallback to local JSON cache if Mongo failed or returned empty
+    if not messages:
+        MESSAGES_DUMP_PATH = os.path.join(os.path.dirname(__file__), "agent_messages.json")
+        if os.path.isfile(MESSAGES_DUMP_PATH):
+            try:
+                with open(MESSAGES_DUMP_PATH, encoding="utf-8") as f:
+                    messages = json.load(f)
+            except Exception as e:
+                print(f"[RAG] Error reading cache file: {e}", file=sys.stderr)
+
+    if not messages:
+        return ""
+
+    scored_messages = []
+    for msg in messages:
+        content = str(msg.get("content", ""))
+        content_lower = content.lower()
+        score = sum(content_lower.count(t) for t in matched_terms)
+        if score > 0:
+            scored_messages.append((score, content))
+
+    # Sort by score descending and take top 5
+    scored_messages.sort(key=lambda x: x[0], reverse=True)
+    top_messages = [content for score, content in scored_messages[:5]]
+
+    if not top_messages:
+        return ""
+
+    context = "\n=== AMD ROCm & Hardware Operational Context (Retrieved Ground Truth) ===\n"
+    for idx, msg in enumerate(top_messages):
+        context += f"Reference {idx + 1}:\n{msg}\n\n"
+    return context
 
 
 def is_complex_task(prompt: str) -> bool:
@@ -455,9 +517,20 @@ async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[
         if answer is not None:
             engine = "local_heuristics"
 
+    # Perform FastRAG syntactic search
+    rag_context = perform_fastrag(prompt)
+    if rag_context:
+        enriched_prompt = (
+            f"Use the following AMD ROCm & hardware operational context to answer the user query. "
+            f"Answer ONLY based on the provided context.\n{rag_context}\nUser Query: {prompt}"
+        )
+        print(f"Injecting FastRAG context for task={task_id}", file=sys.stderr)
+    else:
+        enriched_prompt = prompt
+
     # 2) Hard code/math → Fireworks first (accuracy gate), short max_tokens
     if answer is None and complex_task and FIREWORKS_API_KEY and not ZERO_TOKEN_ONLY:
-        fw_answer, fw_engine = await run_fireworks(client, prompt)
+        fw_answer, fw_engine = await run_fireworks(client, enriched_prompt)
         if fw_engine in {"fireworks_missing_key", "fireworks_missing_model", "fireworks_error"}:
             answer = None
         else:
@@ -465,14 +538,14 @@ async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[
 
     # 3) Local GGUF (0 tokens) for NLP / fallback
     if answer is None:
-        local = run_local_llm(prompt)
+        local = run_local_llm(enriched_prompt)
         if local is not None:
             answer = local
             engine = "local_gguf"
 
     # 4) Last resort Fireworks for non-complex when local exhausted
     if answer is None and FIREWORKS_API_KEY and not ZERO_TOKEN_ONLY:
-        answer, engine = await run_fireworks(client, prompt)
+        answer, engine = await run_fireworks(client, enriched_prompt)
 
     if answer is None:
         answer = "unable to answer locally"

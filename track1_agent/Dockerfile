@@ -24,6 +24,7 @@ RUN mkdir -p /app/models \
     && chmod -R a+rX /app/models
 
 COPY track1_agent/run_harness.py .
+COPY track1_agent/agent_messages.json .
 
 RUN mkdir -p /input /output \
     && chmod 777 /input /output \
