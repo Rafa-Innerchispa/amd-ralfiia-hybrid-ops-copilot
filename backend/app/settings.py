@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     fireworks_api_base: str = "https://api.fireworks.ai/inference/v1"
     fireworks_base_url: str = "https://api.fireworks.ai/inference/v1"  # alias harness AMD
-    fireworks_model: str = "accounts/fireworks/models/gemma-4-31b-it"
+    fireworks_model: str = "accounts/rafagye-innerchispa/deployments/v5ampydp"
     fireworks_api_key: str = ""
 
     amd_cloud_api_token: str = ""

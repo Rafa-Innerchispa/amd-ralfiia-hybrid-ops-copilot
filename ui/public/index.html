@@ -157,13 +157,7 @@
             <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblFwKey">Fireworks API Key</label>
             <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;" />
           </div>
-          <div>
-            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblFwModel">Gemma Model ID</label>
-            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;">
-              <option value="accounts/fireworks/models/gemma-4-31b-it">Gemma 4 31B IT</option>
-              <option value="accounts/fireworks/models/gemma-2-9b-it">Gemma 2 9B IT</option>
-            </select>
-          </div>
+
           <div>
             <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
             <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;" />
@@ -934,7 +928,7 @@
       if (tokVal) {
         payload.amd_inference_token = tokVal;
       }
-      payload.fireworks_model = document.getElementById("selectFwModel").value;
+      payload.fireworks_model = "accounts/rafagye-innerchispa/deployments/v5ampydp";
       payload.amd_inference_base_url = document.getElementById("inputJupyterUrl").value.trim();
       
       try {

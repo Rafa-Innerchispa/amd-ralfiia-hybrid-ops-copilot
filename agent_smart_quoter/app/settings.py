@@ -18,7 +18,7 @@ class AgentSettings(BaseSettings):
     ollama_intake_model: str = "qwen2.5:7b"
 
     fireworks_api_base: str = "https://api.fireworks.ai/inference/v1"
-    fireworks_model: str = "accounts/fireworks/models/gemma-4-31b-it"
+    fireworks_model: str = "accounts/rafagye-innerchispa/deployments/v5ampydp"
     fireworks_api_key: str = ""
 
     mongo_uri: str = "mongodb://127.0.0.1:27017"

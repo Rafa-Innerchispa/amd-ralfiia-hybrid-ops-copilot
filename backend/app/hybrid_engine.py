@@ -150,7 +150,7 @@ async def process_single_task(
             fallback_reason = None
             
             if is_gemma_preset:
-                target_fireworks_model = "accounts/fireworks/models/gemma-4-31b-it"
+                target_fireworks_model = settings.fireworks_model
                 if not settings.fireworks_api_key and not settings.amd_inference_base_url:
                     err_msg = (
                         "No hay backend de Gemma activo. Por favor configura Fireworks o enciende el Jupyter."
