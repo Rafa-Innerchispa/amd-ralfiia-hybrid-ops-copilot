@@ -6,7 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "../../.env"),
+        extra="ignore"
+    )
 
     root_gateway_host: str = "0.0.0.0"
     root_gateway_port: int = 8220

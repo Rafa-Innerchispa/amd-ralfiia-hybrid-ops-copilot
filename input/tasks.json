@@ -6,5 +6,21 @@
   {
     "task_id": "demo-002",
     "prompt": "Debug this Python matrix algorithm for eigenvalue decomposition."
+  },
+  {
+    "task_id": "demo-003",
+    "prompt": "What is the sentiment of this review: \"The driver crashes and the performance is terrible.\""
+  },
+  {
+    "task_id": "demo-004",
+    "prompt": "Classify this ticket: User cannot login and needs support help with their account issue."
+  },
+  {
+    "task_id": "demo-005",
+    "prompt": "Define ROCm in one sentence."
+  },
+  {
+    "task_id": "demo-006",
+    "prompt": "Extract named entities: Satya Nadella visited AMD headquarters in Santa Clara."
   }
 ]

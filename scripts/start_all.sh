@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SWARM="/home/rlopez/projects/innerspark-swarm-os-cursor-local"
 LOG="/tmp/ralfiia-amd-ops"
+# Unset terminal overrides to force backend to read clean values from .env
+unset FIREWORKS_MODEL
+unset FIREWORKS_API_KEY
+unset FIREWORKS_API_BASE
 mkdir -p "$LOG"
 cd "$ROOT"
 [[ -f .env ]] || cp .env.example .env

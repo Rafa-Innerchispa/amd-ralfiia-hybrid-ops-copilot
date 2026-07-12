@@ -48,25 +48,25 @@
     .bar { height: 3px; background: var(--border); margin: .4rem 0 .85rem; display: flex; }
     .bar .loc { background: var(--muted); height: 100%; }
     .bar .rem { background: var(--white); height: 100%; }
-    .card { border: 1px solid var(--border); padding: .55rem .65rem; margin-bottom: .4rem; background: var(--bg); font-size: .74rem; }
-    .card .ok { color: var(--green); font-size: .62rem; }
-    .card .bad { color: var(--red); font-size: .62rem; }
-    .btns { display: flex; flex-direction: column; gap: .35rem; margin: .65rem 0; }
+    .card { border: 1px solid var(--border); padding: .45rem .55rem; margin-bottom: .35rem; background: var(--bg); font-size: .7rem; }
+    .card .ok { color: var(--green); font-size: .6rem; }
+    .card .bad { color: var(--red); font-size: .6rem; }
+    .btns { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin: .45rem 0; }
     button, .link-btn {
-      background: var(--white); color: var(--bg); border: none; padding: .55rem .7rem;
-      font-size: .7rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: block;
+      background: var(--white); color: var(--bg); border: none; padding: .45rem .55rem;
+      font-size: .68rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: block;
     }
     button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
     button:disabled { opacity: .45; cursor: not-allowed; }
     textarea {
       width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-      padding: .6rem; font-family: inherit; font-size: .78rem; resize: vertical; min-height: 72px;
+      padding: .5rem; font-family: inherit; font-size: .74rem; resize: vertical; min-height: 52px;
     }
     .answer-box {
-      margin-top: .65rem; padding: .7rem; border: 1px solid var(--border); background: var(--bg);
-      font-size: .76rem; line-height: 1.5; white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+      margin-top: .45rem; padding: .55rem; border: 1px solid var(--border); background: var(--bg);
+      font-size: .72rem; line-height: 1.45; white-space: pre-wrap; max-height: 150px; overflow-y: auto;
     }
-    .url-box { font-size: .62rem; color: var(--dim); word-break: break-all; padding: .4rem; background: var(--bg); border: 1px solid var(--border); }
+    .url-box { font-size: .62rem; color: var(--dim); word-break: break-all; padding: .3rem .4rem; background: var(--bg); border: 1px solid var(--border); }
     .log-section { display: none; }
     .panel-right { display: flex; flex-direction: column; gap: .75rem; }
     .log-panel {
@@ -86,23 +86,23 @@
     .terminal .err { color: var(--red); }
     .terminal .hi { color: var(--white); }
     .terminal .ts { color: var(--dim); margin-right: .35rem; }
-    .scenario { border: 1px solid var(--border); padding: .55rem; margin-bottom: .4rem; background: var(--bg); font-size: .7rem; cursor: pointer; }
+    .scenario { border: 1px solid var(--border); padding: .45rem; margin-bottom: .35rem; background: var(--bg); font-size: .68rem; cursor: pointer; }
     .scenario:hover { border-color: var(--white); }
-    .scenario .ex { color: var(--blue); font-family: ui-monospace, monospace; font-size: .65rem; margin: .35rem 0; }
-    .scenario .desc { color: var(--dim); font-size: .62rem; line-height: 1.4; }
-    #scenarioDetail { font-size: .68rem; color: var(--muted); margin-bottom: .5rem; padding: .5rem; border: 1px dashed var(--border); background: var(--bg); line-height: 1.45; }
+    .scenario .ex { color: var(--blue); font-family: ui-monospace, monospace; font-size: .62rem; margin: .25rem 0; }
+    .scenario .desc { color: var(--dim); font-size: .6rem; line-height: 1.35; }
+    #scenarioDetail { font-size: .65rem; color: var(--muted); margin-bottom: .4rem; padding: .4rem; border: 1px dashed var(--border); background: var(--bg); line-height: 1.35; }
     .hero {
-      margin: 0; padding: .85rem 1.25rem; border-bottom: 1px solid var(--border);
+      margin: 0; padding: .45rem 1.25rem; border-bottom: 1px solid var(--border);
       background: linear-gradient(90deg, #0a0a0a 0%, #121212 100%);
-      font-size: .78rem; line-height: 1.55;
+      font-size: .72rem; line-height: 1.4;
     }
-    .hero strong { color: var(--white); font-size: .82rem; }
+    .hero strong { color: var(--white); font-size: .74rem; }
     .preset-explain {
-      border: 1px solid var(--border); background: var(--bg); padding: .65rem;
-      margin-bottom: .65rem; font-size: .72rem; line-height: 1.5;
+      border: 1px solid var(--border); background: var(--bg); padding: .5rem;
+      margin-bottom: .45rem; font-size: .68rem; line-height: 1.4;
     }
-    .preset-explain strong { color: var(--white); display: block; margin-bottom: .35rem; }
-    .preset-explain .tag { font-size: .58rem; color: var(--blue); text-transform: uppercase; letter-spacing: .06em; }
+    .preset-explain strong { color: var(--white); display: block; margin-bottom: .25rem; }
+    .preset-explain .tag { font-size: .55rem; color: var(--blue); text-transform: uppercase; letter-spacing: .06em; }
   </style>
 </head>
 <body>
@@ -115,175 +115,117 @@
       <span class="pill" id="pillGw">gateway …</span>
       <span class="pill" id="pillOl">ollama …</span>
       <span class="pill" id="pillFw">fireworks …</span>
+      <span class="pill" style="border-color: var(--amber); color: var(--amber); font-weight: bold;" id="hdrTokens">Tokens: 0 L / 0 R</span>
       <button type="button" class="lang-btn active" id="langEs">ES</button>
       <button type="button" class="lang-btn" id="langEn">EN</button>
-      <button type="button" class="lang-btn" id="btnNotifyGemma" data-i18n="btnNotifyGemma" style="border-color: var(--amber); color: var(--amber); font-weight: bold;">🔔 NOTIFY GEMMA GPU</button>
+      <button type="button" class="lang-btn" id="btnNotifyGemma" data-i18n="btnNotifyGemma" style="border-color: var(--amber); color: var(--amber); font-weight: bold; padding: .2rem .4rem; font-size: .6rem;">🔔 NOTIFY GEMMA GPU</button>
       <a class="pill github" id="githubLink" href="https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot" target="_blank" rel="noopener">GitHub ↗</a>
       <span id="clock" style="font-size:.68rem;color:var(--muted)"></span>
     </div>
   </header>
-  <div id="banner" data-i18n="init">Conectando al backend…</div>
-  <div class="hero" id="heroPitch">
-    <strong data-i18n="heroTitle">Qué hace RalfIA Hybrid Ops (en 30 segundos)</strong><br>
-    <span data-i18n="heroBody">Copiloto de operaciones con varios agentes especializados. Tú escribes una tarea → el gateway decide si va a Ollama local (AMD .5, costo 0), a Fireworks (GPU AMD en nube), o a un agente A2A (cotizador / watchdog). Todo queda registrado en Mongo.</span>
-    <div class="flow" data-i18n="heroFlow">Usuario → Root Gateway :8220 → [Ollama AMD .5 | Fireworks DeepSeek | Agent :8221/:8222] → Mongo</div>
+  <div id="banner" data-i18n="init" style="padding: .35rem 1.25rem; font-size: .68rem;">Conectando al backend…</div>
+  <div class="hero" id="heroPitch" style="padding: 0.35rem 1.25rem; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+    <span>
+      <strong data-i18n="heroTitle">RalfIIA Hybrid Control Plane</strong> — 
+      <span data-i18n="heroBody">Copiloto multi-agente. Tareas simples → Ollama Local (0 tokens). Tareas complejas → Fireworks GPU AMD.</span>
+    </span>
+    <span class="url-box" id="juryUrl" style="padding: 0.15rem 0.45rem; font-size: 0.65rem; border-color: var(--blue); color: var(--blue);">—</span>
   </div>
   <main>
     <section class="panel">
-      <h2 data-i18n="guideTitle">Guía del jurado</h2>
-      <div class="guide">
-        <strong><span data-i18n="guideIntro">Sigue estos pasos para evaluar la demo:</span></strong>
-        <ol id="guideSteps">
-          <li id="step1" data-i18n="step1">Verifica agentes ONLINE (panel derecho)</li>
-          <li id="step2" data-i18n="step2">Ejecuta la demo: Full Auto Demo <em>o</em> un preset (2–5) — no hace falta ambos</li>
-          <li id="step2b" class="alt" data-i18n="step2b">↳ Los presets rellenan el texto y envían solos; no pulses Send otra vez</li>
-          <li id="step3" data-i18n="step3">Lee el cuadro RESULTADO abajo — ahí está la respuesta final</li>
-          <li id="stepGemma" class="alt" data-i18n="stepGemma" style="color: var(--amber); margin-top: 0.4rem;">↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa "🔔 NOTIFY GEMMA GPU" en la cabecera para alertar al equipo.</li>
-        </ol>
-      </div>
-      <h2 data-i18n="metricsTitle">Token economics (Track 1)</h2>
-      <div class="metric"><div class="v" id="tokLocal">0</div><div class="l" data-i18n="tokLocalLbl">Local Ollama — AMD score 0</div></div>
-      <div class="metric"><div class="v" id="tokRemote">0</div><div class="l" data-i18n="tokRemoteLbl">Remote Fireworks (AMD GPU cloud)</div></div>
-      <div class="bar"><div class="loc" id="barLocal" style="width:50%"></div><div class="rem" id="barRemote" style="width:50%"></div></div>
-      <div class="metric"><div class="v" id="txnCount">0</div><div class="l" data-i18n="txnLbl">Mongo transactions</div></div>
-      <h2 data-i18n="urlTitle">Public demo URL</h2>
-      <div class="url-box" id="juryUrl">—</div>
-      
-      <h2 style="margin-top: 1rem;" data-i18n="gemmaPanelTitle">Gemma GPU Backends (Internal)</h2>
-      <div class="card">
-        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>Option A: Fireworks</span>
-          <span class="pill off" id="gemmaFwStatus">OFFLINE</span>
-        </div>
-        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaFwDesc">Gemma-4-31b-it on Fireworks (Deploy on Demand)</div>
-      </div>
-      <div class="card">
-        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>Option B: Jupyter Lab</span>
-          <span class="pill off" id="gemmaJupyterStatus">OFFLINE</span>
-        </div>
-        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaJupyterDesc">Temporary Jupyter server on Radeon Cloud</div>
-      </div>
-      <div class="card">
-        <div style="font-weight: bold; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
-          <span>Option C: AMD Cloud</span>
-          <span class="pill off" id="gemmaAmdCloudStatus">OFFLINE</span>
-        </div>
-        <div class="sub" style="font-size: 0.65rem;" data-i18n="gemmaAmdCloudDesc">MI300X vLLM Droplet ($100 credits)</div>
-      </div>
-      
-      <div class="card" style="border-style: dashed; border-color: var(--amber); margin-top: 1rem;">
-        <div style="font-weight: bold; font-size: 0.72rem; color: var(--amber); margin-bottom: 0.5rem;" data-i18n="gemmaSettingsTitle">⚙️ Gemma Settings (Internal)</div>
-        <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.68rem;">
-          <div>
-            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblFwKey">Fireworks API Key</label>
-            <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+      <!-- GEMMA SETTINGS MOVED TO THE TOP -->
+      <h2 style="margin-top: 0.2rem;" data-i18n="gemmaSettingsTitle">⚙️ Gemma Settings (Internal)</h2>
+      <div class="card" style="border-style: dashed; border-color: var(--amber); padding: .45rem; margin-bottom: .75rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.68rem;">
+          <div style="display: flex; justify-content: space-between; gap: .25rem;">
+            <div style="flex: 1;">
+              <span class="pill off" id="gemmaFwStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">FW: OFFLINE</span>
+            </div>
+            <div style="flex: 1;">
+              <span class="pill off" id="gemmaJupyterStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">JUPYTER: OFFLINE</span>
+            </div>
+            <div style="flex: 1;">
+              <span class="pill off" id="gemmaAmdCloudStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">AMD: OFFLINE</span>
+            </div>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblFwModel">Gemma Model ID</label>
-            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;">
+            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblFwKey">Fireworks API Key</label>
+            <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblFwModel">Gemma Model ID</label>
+            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;">
               <option value="accounts/fireworks/models/gemma-4-31b-it">Gemma 4 31B IT</option>
               <option value="accounts/fireworks/models/gemma-2-9b-it">Gemma 2 9B IT</option>
             </select>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
-            <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
+            <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblJupyterToken">Jupyter Token</label>
-            <input type="password" id="inputJupyterToken" placeholder="token..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;" />
+            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblJupyterToken">Jupyter Token</label>
+            <input type="password" id="inputJupyterToken" placeholder="token..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
-            <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.25rem; font-size: 0.65rem;">
+            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
+            <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;">
               <option value="auto">Auto-detect (Jupyter > Fireworks)</option>
               <option value="fireworks">Force Fireworks (Option A)</option>
               <option value="jupyter">Force Jupyter Lab (Option B)</option>
             </select>
           </div>
-          <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.35rem; font-size: 0.68rem; margin-top: 0.2rem;" data-i18n="btnSaveSettings">Save Settings</button>
+          <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.3rem; font-size: 0.68rem; margin-top: 0.1rem;" data-i18n="btnSaveSettings">Save Settings</button>
         </div>
       </div>
 
-      <!-- Interactive Setup Guide -->
-      <div class="card" style="border: 1px solid var(--border); margin-top: 1rem; background: rgba(255, 255, 255, 0.02);">
-        <div style="font-weight: bold; font-size: 0.72rem; color: var(--teal); margin-bottom: 0.4rem;" data-i18n="setupGuideTitle">📖 Hardware & Setup Guide</div>
-        <div style="font-size: 0.65rem; line-height: 1.35; display: flex; flex-direction: column; gap: 0.5rem;">
-          <div>
-            <b style="color: var(--amber);">Option A (Fireworks AI)</b>
-            <ol style="margin: 0.15rem 0 0 0.8rem; padding: 0;">
-              <li>Log in to <a href="https://app.fireworks.ai" target="_blank" style="color: var(--teal);">app.fireworks.ai</a></li>
-              <li>Under Models, find <b>gemma-2-9b-it</b> and click <b>Deploy</b></li>
-              <li>Copy your API Key, paste it above, select <b>Force Fireworks</b>, and save.</li>
-            </ol>
-          </div>
-          <div style="border-top: 1px solid var(--border); padding-top: 0.4rem;">
-            <b style="color: var(--amber);">Option B (Jupyter CPU/ROCm)</b>
-            <div style="margin-top: 0.2rem; color: #9ca3af; font-size: 0.6rem;">If the notebook restarts/resets, copy-paste these commands in the Jupyter terminal:</div>
-            <ol style="margin: 0.2rem 0 0 0.8rem; padding: 0; display: flex; flex-direction: column; gap: 0.3rem;">
-              <li>Get Token: <code style="background: var(--border); padding: 0 0.15rem;">jupyter server list</code></li>
-              <li>Install: <code style="background: var(--border); padding: 0.15rem; font-size: 0.58rem; display: block; word-break: break-all; margin-top: 0.1rem;">pip install fastapi uvicorn transformers accelerate</code></li>
-              <li>Create script: <code style="background: var(--border); padding: 0.20rem; font-size: 0.52rem; display: block; word-break: break-all; margin-top: 0.1rem; max-height: 100px; overflow-y: scroll;">cat << 'EOF' > gemma_api.py
-import uvicorn
-from fastapi import FastAPI
-from pydantic import BaseModel
-from transformers import pipeline
-import torch
-torch.set_num_threads(4)
-app = FastAPI()
-pipe = pipeline("text-generation", model="unsloth/gemma-2-2b-it", torch_dtype=torch.float32, device_map="cpu")
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-class ChatRequest(BaseModel):
-    model: str
-    messages: list[ChatMessage]
-@app.get("/v1/models")
-async def list_models():
-    return {"data": [{"id": "unsloth/gemma-2-2b-it"}]}
-@app.post("/v1/chat/completions")
-async def chat_completions(req: ChatRequest):
-    prompt = ""
-    for msg in req.messages:
-        prompt += f"<start_of_turn>{msg.role}\n{msg.content}<end_of_turn>\n"
-    prompt += "<start_of_turn>model\n"
-    outputs = pipe(prompt, max_new_tokens=48, do_sample=True, temperature=0.7)
-    return {"choices": [{"message": {"role": "assistant", "content": outputs[0]["generated_text"][len(prompt):].strip()}}]}
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-EOF</code></li>
-              <li>Run: <code style="background: var(--border); padding: 0.15rem; font-size: 0.58rem; display: block; margin-top: 0.1rem;">python3 gemma_api.py</code></li>
-            </ol>
-          </div>
+      <h2 data-i18n="guideTitle">Guía del jurado</h2>
+      <div class="guide" style="margin-bottom: .6rem;">
+        <strong><span data-i18n="guideIntro">Sigue estos pasos para evaluar la demo:</span></strong>
+        <ol id="guideSteps">
+          <li id="step1" data-i18n="step1">Verifica agentes ONLINE (panel derecho)</li>
+          <li id="step2" data-i18n="step2">Ejecuta la demo: Full Auto Demo <em>o</em> un preset (2–6)</li>
+          <li id="step2b" class="alt" data-i18n="step2b">↳ Los presets rellenan el texto y envían solos; no pulses Send</li>
+          <li id="step3" data-i18n="step3">Lee el cuadro RESULTADO abajo — ahí está la respuesta final</li>
+        </ol>
+      </div>
+
+      <h2 data-i18n="metricsTitle">Token economics (Track 1)</h2>
+      <div class="card" style="padding: .45rem; margin-bottom: .5rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 0.2rem;">
+          <span>Local Ollama: <strong id="tokLocal">0</strong></span>
+          <span>Remote: <strong id="tokRemote">0</strong></span>
+          <span>Txns: <strong id="txnCount">0</strong></span>
         </div>
+        <div class="bar" style="margin: .2rem 0;"><div class="loc" id="barLocal" style="width:50%"></div><div class="rem" id="barRemote" style="width:50%"></div></div>
       </div>
     </section>
 
     <section class="panel">
-      <h2 data-i18n="copilotTitle">Copilot interactivo</h2>
-      <div id="scenarioDetail" data-i18n="scenarioHint">Elige un escenario abajo. El log en vivo (derecha) muestra routing, agente y Mongo.</div>
-      <h2 data-i18n="scenariosTitle">Escenarios de demo</h2>
-      <div id="scenarios"></div>
-      <textarea id="input" data-i18n-placeholder="inputPh" placeholder="Escribe consulta ops, cotización o análisis…"></textarea>
-      <div style="margin-top:.45rem;display:flex;gap:.35rem;flex-wrap:wrap">
-        <button type="button" id="send" style="flex:1" data-i18n="sendBtn">Enviar → Root Agent</button>
-      </div>
-      <div class="answer-box" id="answer" data-i18n="answerPh">La respuesta aparecerá aquí…</div>
-      <h2 style="margin-top:1rem" data-i18n="presetsTitle">Presets de prueba</h2>
-      <div class="preset-explain" id="presetExplain">
+      <!-- PRESET BUTTONS MOVED TO THE TOP OF COPILOT PANEL -->
+      <h2 data-i18n="presetsTitle" style="margin-bottom: 0.35rem;">Presets de prueba (Clic para ejecutar)</h2>
+      <div class="preset-explain" id="presetExplain" style="margin-bottom: .35rem;">
         <span class="tag" data-i18n="presetTag">Qué hace cada botón</span>
         <strong id="presetExplainText" data-i18n="presetDefault">Pulsa un preset para ver la explicación.</strong>
       </div>
-      <div class="btns">
-        <button type="button" id="btnShowcase" data-preset="showcase" data-i18n="btnShowcase">▶ 1. Demo completa automática (3 pasos en vivo)</button>
-        <button type="button" class="secondary" data-step="3" data-preset="sentiment" data-msg-es="Analiza el sentimiento del feedback del cliente. Texto: «El técnico de PC Doctor llegó puntual, explicó todo con claridad y dejó mi laptop funcionando perfecta. Muy recomendado.» Responde: POSITIVO, NEGATIVO o NEUTRAL." data-msg-en="Analyze customer feedback sentiment. Text: «The PC Doctor technician arrived on time, explained everything clearly, and left my laptop running perfectly. Highly recommended.» Reply: POSITIVE, NEGATIVE, or NEUTRAL." data-i18n="btnSentiment">2. Análisis de sentimiento (Ollama local, 0 tokens cloud)</button>
-        <button type="button" class="secondary" data-step="3" data-preset="quote" data-msg-es="Cotizar diagnóstico en sitio e instalación de SSD 1TB para cliente PC Doctor" data-msg-en="Quote onsite diagnosis and 1TB SSD installation for PC Doctor customer" data-i18n="btnQuote">3. Cotización demo (agente A2A :8221)</button>
-        <button type="button" class="secondary" data-step="3" data-preset="sre" data-msg-es="Health check del stack ralfiia y plan de remediación" data-msg-en="Health check ralfiia stack and remediation plan" data-i18n="btnSre">4. Health check SRE (agente A2A :8222)</button>
-        <button type="button" class="secondary" data-step="3" data-preset="complex" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnFw">5. Tarea compleja (Fireworks DeepSeek en GPU AMD)</button>
-        <button type="button" class="secondary" id="btnGemmaPreset" data-step="3" data-preset="gemma" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnGemmaPreset" style="border-color: var(--amber); color: var(--amber);" title="Gemma must be active on Fireworks, Jupyter or AMD Developer Cloud" disabled>6. Tarea compleja (Gemma en GPU AMD)</button>
+      <div class="btns" style="margin-bottom: .75rem;">
+        <button type="button" id="btnShowcase" data-preset="showcase" data-i18n="btnShowcase" style="grid-column: span 2; background: var(--teal); color: var(--white); font-weight: bold; text-align: center;">▶ 1. Demo completa automática (3 pasos en vivo)</button>
+        <button type="button" class="secondary" data-step="3" data-preset="sentiment" data-msg-es="Analiza el sentimiento del feedback del cliente. Texto: «El técnico de PC Doctor llegó puntual, explicó todo con claridad y dejó mi laptop funcionando perfecta. Muy recomendado.» Responde: POSITIVO, NEGATIVO o NEUTRAL." data-msg-en="Analyze customer feedback sentiment. Text: «The PC Doctor technician arrived on time, explained everything clearly, and left my laptop running perfectly. Highly recommended.» Reply: POSITIVE, NEGATIVE, or NEUTRAL." data-i18n="btnSentiment">2. Sentimiento (0 tokens)</button>
+        <button type="button" class="secondary" data-step="3" data-preset="quote" data-msg-es="Cotizar diagnóstico en sitio e instalación de SSD 1TB para cliente PC Doctor" data-msg-en="Quote onsite diagnosis and 1TB SSD installation for PC Doctor customer" data-i18n="btnQuote">3. Cotización A2A (:8221)</button>
+        <button type="button" class="secondary" data-step="3" data-preset="sre" data-msg-es="Health check del stack ralfiia y plan de remediación" data-msg-en="Health check ralfiia stack and remediation plan" data-i18n="btnSre">4. Health check SRE (:8222)</button>
+        <button type="button" class="secondary" data-step="3" data-preset="complex" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnFw">5. DeepSeek (Fireworks)</button>
+        <button type="button" class="secondary" id="btnGemmaPreset" data-preset="gemma" data-step="3" data-msg-es="Explica paso a paso el algoritmo de autovalores de matrices en Python" data-msg-en="Explain matrix eigenvalue algorithm step by step in Python" data-i18n="btnGemmaPreset" style="border-color: var(--amber); color: var(--amber);" title="Gemma must be active on Fireworks, Jupyter or AMD Developer Cloud" disabled>6. Gemma (Opción A/B)</button>
       </div>
-      <p style="font-size:.6rem;color:var(--dim)" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo. PC Doctor = tu marca real; el “cliente” no se busca en Mongo en esta demo.</p>
+
+      <h2 data-i18n="copilotTitle">Copilot interactivo</h2>
+      <div id="scenarioDetail" data-i18n="scenarioHint" style="padding: .35rem; font-size: .62rem; margin-bottom: .35rem;">Elige un escenario arriba. El log en vivo (derecha) muestra routing, agente y Mongo.</div>
+      <textarea id="input" data-i18n-placeholder="inputPh" placeholder="Escribe consulta ops, cotización o análisis…" style="min-height: 48px;"></textarea>
+      <div style="margin-top:.35rem;display:flex;gap:.35rem;flex-wrap:wrap">
+        <button type="button" id="send" style="flex:1; text-align: center;" data-i18n="sendBtn">Enviar → Root Agent</button>
+      </div>
+      <div class="answer-box" id="answer" data-i18n="answerPh" style="min-height: 80px; max-height: 130px; margin-top: .45rem;">La respuesta aparecerá aquí…</div>
+      <p style="font-size:.58rem;color:var(--dim); margin-top: .25rem;" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo de PC Doctor.</p>
+    </section>tor = tu marca real; el “cliente” no se busca en Mongo en esta demo.</p>
     </section>
 
     <section class="panel panel-right">
@@ -802,12 +744,15 @@ EOF</code></li>
           jfetch("/api/v1/demo/links", {}, "links", true),
         ]);
 
-        document.getElementById("tokLocal").textContent = stats.tokens_local ?? 0;
-        document.getElementById("tokRemote").textContent = stats.tokens_remote ?? 0;
+        const lTok = stats.tokens_local ?? 0;
+        const rTok = stats.tokens_remote ?? 0;
+        document.getElementById("tokLocal").textContent = lTok;
+        document.getElementById("tokRemote").textContent = rTok;
+        document.getElementById("hdrTokens").textContent = `Tokens: ${lTok} L / ${rTok} R`;
         document.getElementById("txnCount").textContent = stats.total_transactions ?? 0;
-        const tot = (stats.tokens_local||0)+(stats.tokens_remote||0)||1;
-        document.getElementById("barLocal").style.width = ((stats.tokens_local||0)/tot*100)+"%";
-        document.getElementById("barRemote").style.width = ((stats.tokens_remote||0)/tot*100)+"%";
+        const tot = (lTok)+(rTok)||1;
+        document.getElementById("barLocal").style.width = (lTok/tot*100)+"%";
+        document.getElementById("barRemote").style.width = (rTok/tot*100)+"%";
 
         const fw = cred.fireworks || {};
         const ol = cred.ollama || {};

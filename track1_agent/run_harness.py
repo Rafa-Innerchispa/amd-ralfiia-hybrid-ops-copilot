@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """
 Track 1 — AMD Hybrid Token-Efficient Routing Agent harness.
-Optimized hybrid path: fast local heuristics for trivial tasks,
-Fireworks for complex and NLP tasks to prevent CPU timeout and ensure 100% accuracy.
+
+Priority order (minimize remote tokens, maximize accuracy):
+1. High-confidence local heuristics → 0 tokens
+2. Local GGUF (Qwen2.5-0.5B) → 0 tokens
+3. Fireworks (ALLOWED_MODELS) only for hard code/math → few tokens
 """
 
 from __future__ import annotations
@@ -19,6 +22,10 @@ from typing import Any
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+# Container layout: /app/run_harness.py + /app/shared/
+_APP = Path(__file__).resolve().parent
+if str(_APP) not in sys.path:
+    sys.path.insert(0, str(_APP))
 
 import httpx
 
@@ -30,47 +37,365 @@ FIREWORKS_BASE_URL = os.environ.get(
 ).rstrip("/")
 INPUT_PATH = os.environ.get("HARNESS_INPUT_PATH", "/input/tasks.json")
 OUTPUT_PATH = os.environ.get("HARNESS_OUTPUT_PATH", "/output/results.json")
+LOCAL_MODEL_PATH = os.environ.get(
+    "LOCAL_MODEL_PATH", "/app/models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+)
+LOCAL_N_THREADS = int(os.environ.get("LOCAL_N_THREADS", "2"))
+LOCAL_MAX_TOKENS = int(os.environ.get("LOCAL_MAX_TOKENS", "96"))
+ZERO_TOKEN_ONLY = os.environ.get("ZERO_TOKEN_MODE", os.environ.get("ZERO_TOKEN_ONLY", "0")).strip() in {
+    "1",
+    "true",
+    "yes",
+}
 
-_POSITIVE = frozenset(
-    {"good", "great", "love", "excellent", "happy", "positive", "amazing", "wonderful", "cool", "best"}
+COMPLEX_KEYWORDS = (
+    "code",
+    "debug",
+    "math",
+    "puzzle",
+    "matrix",
+    "algorithm",
+    "algoritmo",
+    "implement",
+    "function",
+    "compile",
+    "recursion",
+    "proof",
+    "eigenvalue",
+    "leetcode",
+    "write a python",
+    "write a program",
+    "fix this",
 )
-_NEGATIVE = frozenset(
-    {"bad", "terrible", "hate", "awful", "sad", "negative", "horrible", "poor", "worst", "hate"}
+
+_POSITIVE_STEMS = (
+    "good",
+    "great",
+    "love",
+    "excel",
+    "happ",
+    "positive",
+    "amaz",
+    "wonder",
+    "cool",
+    "best",
+    "awesome",
+    "fantast",
+    "superb",
+    "perfect",
+    "delight",
+    "pleas",
+    "enjoy",
+    "brilliant",
+    "outstanding",
+    "impressive",
+    "solid",
+    "smooth",
+    "fast",
+    "reliable",
 )
+_NEGATIVE_STEMS = (
+    "bad",
+    "terrible",
+    "hate",
+    "awful",
+    "sad",
+    "negative",
+    "horri",
+    "poor",
+    "worst",
+    "fail",
+    "broken",
+    "slow",
+    "crash",
+    "bug",
+    "disappoint",
+    "frustrat",
+    "useless",
+    "problem",
+    "issue",
+    "error",
+    "unreliable",
+    "lag",
+)
+
+_LOCAL_LLM = None
+_LOCAL_LLM_TRIED = False
+
+SYSTEM_BRIEF = (
+    "Answer with ONLY the final short result. "
+    "No lists of rules. No explanations. "
+    "Sentiment labels: positive | negative | neutral | mixed. "
+    "Otherwise reply with the shortest correct answer."
+)
+
+SYSTEM_FIREWORKS = (
+    "You are solving an evaluation task. "
+    "Return only the final answer that would be graded. "
+    "Be concise. Do not restate the instructions. "
+    "If the task is incomplete, give the best direct answer or a minimal clarifying ask."
+)
+
+
+def is_evaluator_mode() -> bool:
+    return bool(os.environ.get("ALLOWED_MODELS", "").strip())
 
 
 def pick_fireworks_model() -> str:
     return pick_target_model(role="complex")
 
 
-def run_local_heuristics(prompt: str) -> str | None:
-    """Fast, lightweight local path for simple tasks to achieve 0 tokens on them."""
-    lowered = prompt.lower()
-    words = set(re.findall(r"[a-z']+", lowered))
+def _tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", text.lower())
 
-    # Trivial Sentiment Heuristics
-    if "sentiment" in lowered or "positive or negative" in lowered:
-        has_pos = bool(words & _POSITIVE)
-        has_neg = bool(words & _NEGATIVE)
+
+def _has_stem(words: set[str], stems: tuple[str, ...]) -> bool:
+    for word in words:
+        for stem in stems:
+            if word == stem or word.startswith(stem):
+                return True
+    return False
+
+
+def _extract_quoted_or_after_colon(prompt: str) -> str:
+    for pattern in (
+        r'["“](.+?)["”]',
+        r"sentiment[:\s]+(.+)$",
+        r"classify[:\s]+(.+)$",
+        r"text[:\s]+(.+)$",
+        r"review[:\s]+(.+)$",
+        r"message[:\s]+(.+)$",
+    ):
+        match = re.search(pattern, prompt, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            return match.group(1).strip()
+    return prompt
+
+
+def is_complex_task(prompt: str) -> bool:
+    lowered = prompt.lower()
+    return any(k in lowered for k in COMPLEX_KEYWORDS)
+
+
+def run_local_heuristics(prompt: str) -> str | None:
+    """High-confidence local path (0 tokens). Returns None when unsure."""
+    lowered = prompt.lower()
+    words = set(_tokenize(lowered))
+    payload = _extract_quoted_or_after_colon(prompt)
+    payload_words = set(_tokenize(payload))
+
+    wants_sentiment = (
+        "sentiment" in lowered
+        or "positive or negative" in lowered
+        or "polarity" in lowered
+        or re.search(r"\b(tone|opinion)\b", lowered) is not None
+    )
+    if wants_sentiment:
+        # Avoid counting task instruction words as polarity
+        instruction = {
+            "sentiment",
+            "classify",
+            "classification",
+            "positive",
+            "negative",
+            "neutral",
+            "polarity",
+            "tone",
+            "opinion",
+        }
+        payload_only = payload_words - instruction
+        scan = payload_only or payload_words
+        has_pos = _has_stem(scan, _POSITIVE_STEMS)
+        has_neg = _has_stem(scan, _NEGATIVE_STEMS)
         if has_pos and not has_neg:
             return "positive"
         if has_neg and not has_pos:
             return "negative"
         if has_pos and has_neg:
             return "mixed"
-        return "neutral"
+        # Unsure → local LLM (do not force neutral)
+        return None
 
-    # Trivial Spam/Ticket Classification Heuristics
-    if "classify" in lowered or "classification" in lowered:
-        if words & {"spam", "phishing", "scam"}:
+    wants_classify = (
+        "classify" in lowered
+        or "classification" in lowered
+        or "label this" in lowered
+        or "categorize" in lowered
+    ) and not wants_sentiment
+    if wants_classify:
+        if words & {"spam", "phishing", "scam", "fraud"}:
             return "spam"
-        if words & {"support", "help", "ticket", "issue"}:
+        if words & {"support", "helpdesk", "ticket", "bug", "outage", "incident"}:
             return "support"
-        if words & {"sales", "pricing", "quote", "buy"}:
+        if words & {"sales", "pricing", "quote", "buy", "purchase", "demo"}:
             return "sales"
-        return "general"
+        if words & {"billing", "invoice", "payment", "refund"}:
+            return "billing"
+        if words & {"hr", "payroll", "recruiting", "onboarding"}:
+            return "hr"
+        # Not confident enough for a forced "general"
+        return None
+
+    if (
+        "ner" in lowered
+        or "named entit" in lowered
+        or "extract entit" in lowered
+        or "extract the entities" in lowered
+        or "find entities" in lowered
+    ):
+        entities: list[str] = []
+        # Prefer payload after colon
+        scan_text = payload if payload != prompt else prompt
+        for match in re.finditer(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b", scan_text):
+            name = match.group(1)
+            if name.lower() in {
+                "the",
+                "what",
+                "which",
+                "named",
+                "entity",
+                "entities",
+                "extract",
+                "please",
+                "identify",
+                "find",
+                "list",
+            }:
+                continue
+            entities.append(name)
+        # Also keep ALLCAPS tokens like AMD, ROCm-ish
+        for match in re.finditer(r"\b([A-Z]{2,}[a-z0-9]*)\b", scan_text):
+            tok = match.group(1)
+            if tok.lower() not in {"ner", "amd"} or tok == "AMD":
+                entities.append(tok if tok != "AMD" else "AMD")
+        # Deduplicate preserving order
+        cleaned = list(dict.fromkeys(entities))
+        if cleaned:
+            return ", ".join(cleaned)
+        return None
+
+    if "define" in lowered or "definition of" in lowered or lowered.strip().startswith("what is "):
+        term_match = re.search(
+            r"(?:define|definition of|what is)\s+([a-z0-9][a-z0-9 _/-]{1,60})",
+            lowered,
+        )
+        if term_match:
+            term = term_match.group(1).strip(" ?.,")
+            # Leave definition quality to local LLM; only short-circuit ultra-known AMD terms
+            known = {
+                "rocm": "ROCm is AMD's open software stack for GPU compute.",
+                "instinct": "AMD Instinct is AMD's datacenter GPU accelerator line.",
+                "mi300x": "MI300X is an AMD Instinct accelerator GPU for AI/HPC.",
+                "ryzen": "Ryzen is AMD's consumer/pro CPU brand.",
+                "epyc": "EPYC is AMD's server CPU brand.",
+            }
+            key = term.replace(" ", "").lower()
+            for k, v in known.items():
+                if k in key:
+                    return v
+        return None
+
+    if "summarize" in lowered or "summary" in lowered or "tldr" in lowered:
+        return None
 
     return None
+
+
+def get_local_llm():
+    """Lazy-load GGUF once. Safe if llama_cpp or weights are missing."""
+    global _LOCAL_LLM, _LOCAL_LLM_TRIED
+    if _LOCAL_LLM_TRIED:
+        return _LOCAL_LLM
+    _LOCAL_LLM_TRIED = True
+
+    if not os.path.isfile(LOCAL_MODEL_PATH):
+        print(f"[local] model missing: {LOCAL_MODEL_PATH}", file=sys.stderr)
+        return None
+
+    try:
+        from llama_cpp import Llama
+    except Exception as exc:
+        print(f"[local] llama_cpp unavailable: {exc}", file=sys.stderr)
+        return None
+
+    try:
+        print(f"[local] loading {LOCAL_MODEL_PATH} threads={LOCAL_N_THREADS}", file=sys.stderr)
+        _LOCAL_LLM = Llama(
+            model_path=LOCAL_MODEL_PATH,
+            n_ctx=2048,
+            n_threads=LOCAL_N_THREADS,
+            n_batch=256,
+            verbose=False,
+        )
+        print("[local] ready", file=sys.stderr)
+    except Exception as exc:
+        print(f"[local] load failed: {exc}", file=sys.stderr)
+        _LOCAL_LLM = None
+    return _LOCAL_LLM
+
+
+def run_local_llm(prompt: str) -> str | None:
+    llm = get_local_llm()
+    if llm is None:
+        return None
+
+    # Task-specific micro prompts improve 0.5B reliability a lot
+    lowered = prompt.lower()
+    if "sentiment" in lowered or "polarity" in lowered:
+        user = (
+            "Classify sentiment as exactly one word: positive, negative, neutral, or mixed.\n"
+            f"Text: {_extract_quoted_or_after_colon(prompt)}"
+        )
+    elif "named entit" in lowered or "ner" in lowered or "extract entit" in lowered:
+        user = (
+            "Extract named entities as a comma-separated list. "
+            "If none, reply none.\n"
+            f"Text: {_extract_quoted_or_after_colon(prompt)}"
+        )
+    elif "classify" in lowered or "categorize" in lowered or "label" in lowered:
+        user = (
+            "Classify into one short label (spam, support, sales, billing, hr, or general).\n"
+            f"Text: {_extract_quoted_or_after_colon(prompt)}"
+        )
+    elif "summar" in lowered or "tldr" in lowered:
+        user = f"Summarize in one short sentence:\n{_extract_quoted_or_after_colon(prompt)}"
+    elif "define" in lowered or lowered.startswith("what is"):
+        user = f"Define in one short sentence:\n{prompt}"
+    else:
+        user = prompt
+
+    messages = [
+        {"role": "system", "content": SYSTEM_BRIEF},
+        {"role": "user", "content": user},
+    ]
+    try:
+        out = llm.create_chat_completion(
+            messages=messages,
+            temperature=0.0,
+            max_tokens=LOCAL_MAX_TOKENS,
+            top_p=1.0,
+        )
+        content = out["choices"][0]["message"]["content"]
+        answer = str(content or "").strip()
+        if not answer:
+            return None
+        # Keep first line only; strip chatty prefixes
+        answer = answer.splitlines()[0].strip()
+        answer = re.sub(
+            r"^(answer|final answer|result|sentiment|label|entities)\s*[:\-]\s*",
+            "",
+            answer,
+            flags=re.IGNORECASE,
+        ).strip()
+        # Sentiment normalization
+        low = answer.lower().strip(" .")
+        for label in ("positive", "negative", "neutral", "mixed"):
+            if low == label or low.startswith(label + " "):
+                return label
+        return answer
+    except Exception as exc:
+        print(f"[local] infer error: {exc}", file=sys.stderr)
+        return None
 
 
 async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, str]:
@@ -81,7 +406,7 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
         return "No Fireworks model configured (set ALLOWED_MODELS)", "fireworks_missing_model"
 
     print(
-        f"[RalfIIA Control Plane] Directing production request to model target: {model_id}",
+        f"[RalfIIA Control Plane] Fireworks fallback → {model_id}",
         file=sys.stderr,
     )
 
@@ -91,19 +416,23 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
     }
     payload = {
         "model": normalize_model_id(model_id),
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1,
+        "messages": [
+            {"role": "system", "content": SYSTEM_FIREWORKS},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.0,
+        "max_tokens": 256 if is_complex_task(prompt) else 96,
     }
     try:
         resp = await client.post(
             f"{FIREWORKS_BASE_URL}/chat/completions",
             json=payload,
             headers=headers,
-            timeout=60.0,
+            timeout=45.0,
         )
         if resp.status_code == 200:
             data = resp.json()
-            answer = data["choices"][0]["message"]["content"]
+            answer = str(data["choices"][0]["message"]["content"]).strip()
             return answer, f"Fireworks ({model_id})"
         return (
             f"Fireworks HTTP {resp.status_code}: {resp.text[:400]}",
@@ -116,14 +445,38 @@ async def run_fireworks(client: httpx.AsyncClient, prompt: str) -> tuple[str, st
 async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[str, str]:
     task_id = str(item.get("task_id", uuid.uuid4()))
     prompt = str(item.get("prompt", ""))
+    complex_task = is_complex_task(prompt)
 
-    # Try fast local heuristics first (0 tokens, 0ms latency)
-    answer = run_local_heuristics(prompt)
-    engine = "local_heuristics"
+    # 1) Heuristics (0 tokens) — skip for hard code/math
+    answer: str | None = None
+    engine = "unset"
+    if not complex_task:
+        answer = run_local_heuristics(prompt)
+        if answer is not None:
+            engine = "local_heuristics"
 
-    # Fallback to Fireworks for complex tasks, NER, Summaries, and Definitions to guarantee 100% accuracy
+    # 2) Hard code/math → Fireworks first (accuracy gate), short max_tokens
+    if answer is None and complex_task and FIREWORKS_API_KEY and not ZERO_TOKEN_ONLY:
+        fw_answer, fw_engine = await run_fireworks(client, prompt)
+        if fw_engine in {"fireworks_missing_key", "fireworks_missing_model", "fireworks_error"}:
+            answer = None
+        else:
+            answer, engine = fw_answer, fw_engine
+
+    # 3) Local GGUF (0 tokens) for NLP / fallback
     if answer is None:
+        local = run_local_llm(prompt)
+        if local is not None:
+            answer = local
+            engine = "local_gguf"
+
+    # 4) Last resort Fireworks for non-complex when local exhausted
+    if answer is None and FIREWORKS_API_KEY and not ZERO_TOKEN_ONLY:
         answer, engine = await run_fireworks(client, prompt)
+
+    if answer is None:
+        answer = "unable to answer locally"
+        engine = "local_exhausted"
 
     print(f"task={task_id} engine={engine}", file=sys.stderr)
     return {"task_id": task_id, "answer": answer}
@@ -146,6 +499,9 @@ def validate_results(results: list[Any]) -> str | None:
 
 
 async def main_async() -> int:
+    # Warm local model early so first tasks are fast
+    get_local_llm()
+
     if not os.path.isfile(INPUT_PATH):
         print(f"ERROR: input not found: {INPUT_PATH}", file=sys.stderr)
         return 1

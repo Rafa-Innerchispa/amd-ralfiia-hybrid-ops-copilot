@@ -1,8 +1,12 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AgentSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "../../.env"),
+        extra="ignore"
+    )
 
     agent_port: int = 8221
     agent_auth: str = "quoter_bearer_token_change_me"
