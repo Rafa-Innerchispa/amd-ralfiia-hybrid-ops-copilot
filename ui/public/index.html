@@ -792,9 +792,7 @@
           if (cred.jupyter && cred.jupyter.token) {
             document.getElementById("inputJupyterToken").placeholder = "•••••••••••• (Configured)";
           }
-          if (fw.model) {
-            document.getElementById("selectFwModel").value = fw.model;
-          }
+          // selectFwModel removed
           settingsLoaded = true;
         }
 
