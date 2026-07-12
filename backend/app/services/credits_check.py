@@ -44,6 +44,7 @@ async def fireworks_health() -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=12.0) as client:
             r = await client.get(f"{base}/models", headers=headers)
             r.raise_for_status()
+            deployed = [m.get("id", "") for m in r.json().get("data", [])]
             gemma_deployed = [settings.fireworks_model]
             gemma_ready = True
             gemma_catalog = [settings.fireworks_model]
