@@ -47,8 +47,9 @@ async def fireworks_health() -> dict[str, Any]:
                 return {"ok": False, "configured": True, "error": "API key inválida"}
             r.raise_for_status()
             deployed = [m.get("id", "") for m in r.json().get("data", [])]
-            gemma_deployed = [m for m in deployed if "gemma" in m.lower()]
             gemma_catalog = list(GEMMA_MODEL_IDS.values())
+            # Public catalog models are serverless and always available if the API key is valid
+            gemma_ready = (target in deployed) or (target in gemma_catalog)
             return {
                 "ok": True,
                 "configured": True,
@@ -57,10 +58,10 @@ async def fireworks_health() -> dict[str, Any]:
                 "deployed_models": deployed,
                 "gemma_deployed": gemma_deployed,
                 "gemma_catalog": gemma_catalog,
-                "gemma_ready": target in deployed,
+                "gemma_ready": gemma_ready,
                 "deploy_hint": (
                     None
-                    if target in deployed
+                    if gemma_ready
                     else "Deploy on Demand en app.fireworks.ai → Gemma → gemma-4-31b-it"
                 ),
             }
