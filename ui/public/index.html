@@ -222,7 +222,13 @@
         <button type="button" id="send" style="flex:1; text-align: center; padding: .35rem;" data-i18n="sendBtn">Enviar → Root Agent</button>
       </div>
       <div class="answer-box" id="answer" data-i18n="answerPh" style="min-height: 70px; max-height: 120px; margin-top: .4rem; font-size: .68rem;">La respuesta aparecerá aquí…</div>
-      <p style="font-size:.56rem;color:var(--dim); margin-top: .2rem;" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo de PC Doctor.</p>
+      <p style="font-size:.56rem;color:var(--dim); margin-top: .25rem;" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo de PC Doctor.</p>
+
+      <h2 style="margin-top: 1rem;">🛡️ Consultor Arquitecto Gemma (Live)</h2>
+      <div style="font-size: .6rem; color: var(--muted); margin-bottom: .35rem;">Pega código ROCm o consultas de Contifico aquí. Gemma 2.0 en Fireworks realizará una auditoría en vivo.</div>
+      <textarea id="gemmaInput" placeholder="Pega código PyTorch/HIP o configuraciones de red de Contifico..." style="min-height: 52px; font-family: monospace;"></textarea>
+      <button type="button" id="btnGemmaAudit" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; margin-top: .35rem; padding: .35rem;">Analizar con Gemma GPU AMD</button>
+      <div class="answer-box" id="gemmaAnswer" style="min-height: 80px; max-height: 160px; margin-top: .45rem; font-size: .65rem; border-color: var(--amber);">Los resultados de la auditoría de Gemma aparecerán aquí…</div>
     </section>
 
     <section class="panel panel-right">
@@ -947,6 +953,34 @@
       } finally {
         btn.disabled = false;
         btn.textContent = lang === "es" ? "Guardar Configuración" : "Save Settings";
+      }
+    };
+
+    document.getElementById("btnGemmaAudit").onclick = async () => {
+      const code = document.getElementById("gemmaInput").value.trim();
+      if (!code) return;
+      
+      const btn = document.getElementById("btnGemmaAudit");
+      const ans = document.getElementById("gemmaAnswer");
+      btn.disabled = true;
+      btn.textContent = lang === "es" ? "Analizando código..." : "Analyzing code...";
+      ans.innerHTML = '<div class="answer-label" style="color: var(--amber);">PROCESANDO...</div>';
+      
+      const prompt = `Actuar como Arquitecto de Sistemas AMD ROCm y Consultor Cloud. Analizar el siguiente código, configuración o consulta técnica e identificar cuellos de botella de VRAM, optimizaciones de compilación o problemas de consistencia con Contifico:\n\n${code}`;
+      
+      try {
+        const d = await sendChat(prompt, true, "gemma");
+        const formatted = formatAnswer(d);
+        ans.className = "answer-box result-ok";
+        ans.style.borderColor = "var(--green)";
+        ans.innerHTML = '<div class="answer-label" style="color: var(--green);">' + t("resultLabel") + "</div>" + formatted.replace(/</g, "&lt;");
+      } catch (e) {
+        ans.className = "answer-box";
+        ans.style.borderColor = "var(--red)";
+        ans.textContent = "Error: " + e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = lang === "es" ? "Analizar con Gemma GPU AMD" : "Analyze with Gemma GPU AMD";
       }
     };
 
