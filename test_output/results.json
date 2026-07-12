@@ -1,0 +1,26 @@
+[
+  {
+    "task_id": "demo-001",
+    "answer": "positive"
+  },
+  {
+    "task_id": "demo-002",
+    "answer": "The provided Python code snippet appears to be a basic implementation of the QR factorization method, which is not suitable for eigenvalue decomposition. For eigenvalue decomposition, one should use NumPy's `eig` function instead."
+  },
+  {
+    "task_id": "demo-003",
+    "answer": "negative"
+  },
+  {
+    "task_id": "demo-004",
+    "answer": "support"
+  },
+  {
+    "task_id": "demo-005",
+    "answer": "ROCm is a high-performance computing platform for scientific simulations and data analysis."
+  },
+  {
+    "task_id": "demo-006",
+    "answer": "Satya Nadella, Santa Clara, AMD"
+  }
+]
