@@ -62,7 +62,7 @@ def fireworks_model_id(short_name: str) -> str:
 
 
 def resolve_complex_model(target_model: str | None = None) -> str:
-    if target_model:
+    if target_model and target_model != "gemma":
         return normalize_model_id(target_model)
     env_allowed = os.environ.get("ALLOWED_MODELS", "").strip()
     if env_allowed:
