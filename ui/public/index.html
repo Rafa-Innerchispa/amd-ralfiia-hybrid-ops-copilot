@@ -4,112 +4,118 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RalfIIA Hybrid Ops — AMD Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #060606; --panel: #101010; --border: #262626;
-      --text: #ececec; --muted: #9a9a9a; --dim: #5a5a5a;
-      --white: #fff; --green: #4ade80; --amber: #fbbf24; --red: #f87171; --blue: #60a5fa;
+      --bg: #030712; --panel: #0b0f19; --border: #1f2937;
+      --text: #f3f4f6; --muted: #9ca3af; --dim: #6b7280;
+      --white: #ffffff; --green: #10b981; --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6; --teal: #14b8a6;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
     header {
-      border-bottom: 1px solid var(--border); padding: .85rem 1.25rem;
+      border-bottom: 1px solid var(--border); padding: .75rem 1.25rem; background: var(--panel);
       display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem;
     }
-    header h1 { font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; }
-    .sub { color: var(--muted); font-size: .7rem; margin-top: .2rem; }
-    .dot { display: inline-block; width: 7px; height: 7px; background: var(--green); border-radius: 50%; margin-right: 6px; animation: blink 2s infinite; }
+    header h1 { font-family: 'Space Grotesk', sans-serif; font-size: .88rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; display: flex; align-items: center; }
+    .sub { color: var(--muted); font-size: .68rem; margin-top: .15rem; }
+    .dot { display: inline-block; width: 8px; height: 8px; background: var(--green); border-radius: 50%; margin-right: 8px; animation: blink 2s infinite; }
     .dot.off { background: var(--red); animation: none; }
     @keyframes blink { 50% { opacity: .35; } }
     .hdr-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
     .pill {
-      font-size: .62rem; padding: .25rem .55rem; border: 1px solid var(--border);
-      border-radius: 999px; color: var(--muted); text-decoration: none;
+      font-size: .6rem; padding: .2rem .5rem; border: 1px solid var(--border);
+      border-radius: 4px; color: var(--muted); text-decoration: none; background: rgba(255,255,255,0.02);
+      font-weight: 500;
     }
-    .pill.on { border-color: var(--green); color: var(--green); }
-    .pill.off { border-color: var(--red); color: var(--red); }
-    .pill.github { border-color: var(--blue); color: var(--blue); }
-    .lang-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: .25rem .5rem; font-size: .65rem; cursor: pointer; }
-    .lang-btn.active { border-color: var(--white); }
-    #banner { padding: .5rem 1.25rem; font-size: .72rem; border-bottom: 1px solid var(--border); background: #141008; color: var(--amber); }
-    main { display: grid; grid-template-columns: 320px 1fr 300px; gap: 1px; background: var(--border); }
+    .pill.on { border-color: var(--green); color: var(--green); background: rgba(16,185,129,0.05); }
+    .pill.off { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.05); }
+    .pill.github { border-color: var(--blue); color: var(--blue); background: rgba(59,130,246,0.05); }
+    .lang-btn { background: transparent; border: 1px solid var(--border); color: var(--text); padding: .2rem .4rem; font-size: .62rem; cursor: pointer; border-radius: 4px; }
+    .lang-btn.active { border-color: var(--white); background: rgba(255,255,255,0.05); }
+    #banner { padding: .35rem 1.25rem; font-size: .68rem; border-bottom: 1px solid var(--border); background: #181105; color: var(--amber); }
+    main { display: grid; grid-template-columns: 290px 1fr 280px; gap: 1px; background: var(--border); }
     @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
-    .panel { background: var(--panel); padding: 1rem; }
-    .panel h2 { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .65rem; }
-    .guide { border: 1px solid var(--border); background: var(--bg); padding: .65rem; margin-bottom: .75rem; font-size: .74rem; line-height: 1.45; }
-    .guide ol { margin: .4rem 0 0 1.1rem; }
-    .guide li { margin-bottom: .35rem; }
-    .guide li.active { color: var(--white); font-weight: 600; }
-    .guide li.alt { color: var(--dim); font-size: .68rem; list-style: none; margin-left: -.5rem; }
-    .answer-box.result-ok { border-color: var(--green); }
-    .answer-label { font-size: .62rem; color: var(--green); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .35rem; }
-    .metric .v { font-size: 1.45rem; font-weight: 300; }
-    .metric .l { font-size: .65rem; color: var(--dim); margin-top: .1rem; margin-bottom: .75rem; }
-    .bar { height: 3px; background: var(--border); margin: .4rem 0 .85rem; display: flex; }
+    .panel { background: var(--panel); padding: .85rem; }
+    .panel h2 { font-family: 'Space Grotesk', sans-serif; font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .55rem; font-weight: 600; }
+    .guide { border: 1px solid var(--border); background: var(--bg); padding: .55rem; margin-bottom: .6rem; font-size: .7rem; line-height: 1.4; border-radius: 6px; }
+    .guide ol { margin: .3rem 0 0 1rem; }
+    .guide li { margin-bottom: .25rem; }
+    .guide li.active { color: var(--white); font-weight: 500; }
+    .guide li.alt { color: var(--dim); font-size: .65rem; list-style: none; margin-left: -.5rem; }
+    .answer-box.result-ok { border-color: var(--green); box-shadow: 0 0 10px rgba(16,185,129,0.05); }
+    .answer-label { font-family: 'Space Grotesk', sans-serif; font-size: .6rem; color: var(--green); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .3rem; font-weight: 600; }
+    .bar { height: 3px; background: var(--border); margin: .2rem 0 .5rem; display: flex; border-radius: 2px; overflow: hidden; }
     .bar .loc { background: var(--muted); height: 100%; }
     .bar .rem { background: var(--white); height: 100%; }
-    .card { border: 1px solid var(--border); padding: .45rem .55rem; margin-bottom: .35rem; background: var(--bg); font-size: .7rem; }
-    .card .ok { color: var(--green); font-size: .6rem; }
-    .card .bad { color: var(--red); font-size: .6rem; }
+    .card { border: 1px solid var(--border); padding: .45rem .55rem; margin-bottom: .35rem; background: var(--bg); font-size: .7rem; border-radius: 6px; transition: border-color 0.2s; }
+    .card:hover { border-color: rgba(255,255,255,0.08); }
+    .card .ok { color: var(--green); font-size: .6rem; font-weight: 500; }
+    .card .bad { color: var(--red); font-size: .6rem; font-weight: 500; }
     .btns { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin: .45rem 0; }
     button, .link-btn {
-      background: var(--white); color: var(--bg); border: none; padding: .45rem .55rem;
-      font-size: .68rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: block;
+      background: var(--white); color: var(--bg); border: none; padding: .4rem .5rem;
+      font-size: .66rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: block; border-radius: 4px; transition: opacity 0.2s;
     }
+    button:hover, .link-btn:hover { opacity: 0.9; }
     button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
-    button:disabled { opacity: .45; cursor: not-allowed; }
+    button.secondary:hover { background: rgba(255,255,255,0.02); border-color: var(--muted); }
+    button:disabled { opacity: .35; cursor: not-allowed; }
     textarea {
       width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
-      padding: .5rem; font-family: inherit; font-size: .74rem; resize: vertical; min-height: 52px;
+      padding: .45rem; font-family: inherit; font-size: .72rem; resize: vertical; min-height: 48px; border-radius: 4px;
     }
+    textarea:focus { outline: none; border-color: var(--blue); }
     .answer-box {
       margin-top: .45rem; padding: .55rem; border: 1px solid var(--border); background: var(--bg);
-      font-size: .72rem; line-height: 1.45; white-space: pre-wrap; max-height: 150px; overflow-y: auto;
+      font-size: .7rem; line-height: 1.45; white-space: pre-wrap; max-height: 130px; overflow-y: auto; border-radius: 6px;
     }
-    .url-box { font-size: .62rem; color: var(--dim); word-break: break-all; padding: .3rem .4rem; background: var(--bg); border: 1px solid var(--border); }
+    .url-box { font-size: .62rem; color: var(--dim); word-break: break-all; padding: .25rem .4rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
     .log-section { display: none; }
-    .panel-right { display: flex; flex-direction: column; gap: .75rem; }
+    .panel-right { display: flex; flex-direction: column; gap: .65rem; }
     .log-panel {
-      border: 1px solid var(--border); background: #030303; flex: 0 0 auto;
+      border: 1px solid var(--border); background: #02040a; flex: 0 0 auto; border-radius: 6px; overflow: hidden;
     }
-    .log-panel.live { border-color: var(--green); box-shadow: 0 0 0 1px rgba(74,222,128,.15); }
-    .log-panel h2 { margin-bottom: .45rem; display: flex; align-items: center; gap: .4rem; }
+    .log-panel.live { border-color: var(--green); box-shadow: 0 0 10px rgba(16,185,129,0.05); }
+    .log-panel h2 { margin-bottom: .25rem; display: flex; align-items: center; gap: .4rem; }
     .log-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.2s infinite; }
     .log-dot.off { background: var(--red); animation: none; }
     .terminal {
-      background: #030303; font-family: ui-monospace, "Cascadia Code", monospace;
-      font-size: .65rem; line-height: 1.45; padding: .55rem; height: 220px; overflow-y: auto; color: #aaa;
+      background: #02040a; font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: .62rem; line-height: 1.4; padding: .45rem; height: 180px; overflow-y: auto; color: #a1a1aa;
     }
-    .terminal .ev { padding: .15rem 0; border-bottom: 1px solid #111; }
+    .terminal .ev { padding: .1rem 0; border-bottom: 1px solid #111827; }
     .terminal .cmd { color: var(--blue); }
     .terminal .ok { color: var(--green); }
     .terminal .err { color: var(--red); }
     .terminal .hi { color: var(--white); }
-    .terminal .ts { color: var(--dim); margin-right: .35rem; }
-    .scenario { border: 1px solid var(--border); padding: .45rem; margin-bottom: .35rem; background: var(--bg); font-size: .68rem; cursor: pointer; }
-    .scenario:hover { border-color: var(--white); }
-    .scenario .ex { color: var(--blue); font-family: ui-monospace, monospace; font-size: .62rem; margin: .25rem 0; }
-    .scenario .desc { color: var(--dim); font-size: .6rem; line-height: 1.35; }
-    #scenarioDetail { font-size: .65rem; color: var(--muted); margin-bottom: .4rem; padding: .4rem; border: 1px dashed var(--border); background: var(--bg); line-height: 1.35; }
+    .terminal .ts { color: var(--dim); margin-right: .3rem; }
+    .scenario { border: 1px solid var(--border); padding: .4rem; margin-bottom: .3rem; background: var(--bg); font-size: .68rem; cursor: pointer; border-radius: 4px; }
+    .scenario:hover { border-color: var(--muted); }
+    .scenario .ex { color: var(--blue); font-family: ui-monospace, monospace; font-size: .6rem; margin: .2rem 0; }
+    .scenario .desc { color: var(--dim); font-size: .58rem; line-height: 1.3; }
+    #scenarioDetail { font-size: .62rem; color: var(--muted); margin-bottom: .35rem; padding: .35rem; border: 1px dashed var(--border); background: var(--bg); line-height: 1.3; border-radius: 4px; }
     .hero {
-      margin: 0; padding: .45rem 1.25rem; border-bottom: 1px solid var(--border);
-      background: linear-gradient(90deg, #0a0a0a 0%, #121212 100%);
-      font-size: .72rem; line-height: 1.4;
+      margin: 0; padding: .35rem 1.25rem; border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, #090d16 0%, #0b0f19 100%);
+      font-size: .72rem; line-height: 1.35;
     }
-    .hero strong { color: var(--white); font-size: .74rem; }
+    .hero strong { color: var(--white); font-size: .74rem; font-family: 'Space Grotesk', sans-serif; }
     .preset-explain {
-      border: 1px solid var(--border); background: var(--bg); padding: .5rem;
-      margin-bottom: .45rem; font-size: .68rem; line-height: 1.4;
+      border: 1px solid var(--border); background: var(--bg); padding: .45rem;
+      margin-bottom: .4rem; font-size: .66rem; line-height: 1.35; border-radius: 6px;
     }
-    .preset-explain strong { color: var(--white); display: block; margin-bottom: .25rem; }
-    .preset-explain .tag { font-size: .55rem; color: var(--blue); text-transform: uppercase; letter-spacing: .06em; }
+    .preset-explain strong { color: var(--white); display: block; margin-bottom: .2rem; }
+    .preset-explain .tag { font-size: .52rem; color: var(--blue); text-transform: uppercase; letter-spacing: .06em; font-family: 'Space Grotesk', sans-serif; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1><span class="dot" id="liveDot"></span>RalfIIA Hybrid Ops Copilot</h1>
-      <div class="sub" data-i18n="subtitle">AMD ACT II · Track 3 Unicorn + Track 1 Router · A2A Mesh</div>
+      <h1><span class="dot" id="liveDot"></span>RalfIIA Hybrid Ops</h1>
+      <div class="sub" data-i18n="subtitle">AMD ACT II · Track 3 + Track 1 Router · A2A Mesh</div>
     </div>
     <div class="hdr-actions">
       <span class="pill" id="pillGw">gateway …</span>
@@ -123,93 +129,91 @@
       <span id="clock" style="font-size:.68rem;color:var(--muted)"></span>
     </div>
   </header>
-  <div id="banner" data-i18n="init" style="padding: .35rem 1.25rem; font-size: .68rem;">Conectando al backend…</div>
-  <div class="hero" id="heroPitch" style="padding: 0.35rem 1.25rem; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+  <div id="banner" data-i18n="init" style="padding: .3rem 1.25rem; font-size: .65rem;">Conectando al backend…</div>
+  <div class="hero" id="heroPitch" style="padding: 0.3rem 1.25rem; font-size: 0.7rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
     <span>
-      <strong data-i18n="heroTitle">RalfIIA Hybrid Control Plane</strong> — 
+      <strong data-i18n="heroTitle">RalfIIA Control Plane</strong> — 
       <span data-i18n="heroBody">Copiloto multi-agente. Tareas simples → Ollama Local (0 tokens). Tareas complejas → Fireworks GPU AMD.</span>
     </span>
-    <span class="url-box" id="juryUrl" style="padding: 0.15rem 0.45rem; font-size: 0.65rem; border-color: var(--blue); color: var(--blue);">—</span>
+    <span class="url-box" id="juryUrl" style="padding: 0.1rem 0.35rem; font-size: 0.6rem; border-color: var(--blue); color: var(--blue);">—</span>
   </div>
   <main>
     <section class="panel">
-      <!-- GEMMA SETTINGS MOVED TO THE TOP -->
-      <h2 style="margin-top: 0.2rem;" data-i18n="gemmaSettingsTitle">⚙️ Gemma Settings (Internal)</h2>
-      <div class="card" style="border-style: dashed; border-color: var(--amber); padding: .45rem; margin-bottom: .75rem;">
-        <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.68rem;">
+      <h2 style="margin-top: 0.1rem;" data-i18n="gemmaSettingsTitle">⚙️ Gemma Settings (Internal)</h2>
+      <div class="card" style="border-style: dashed; border-color: var(--amber); padding: .4rem; margin-bottom: .6rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.66rem;">
           <div style="display: flex; justify-content: space-between; gap: .25rem;">
             <div style="flex: 1;">
-              <span class="pill off" id="gemmaFwStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">FW: OFFLINE</span>
+              <span class="pill off" id="gemmaFwStatus" style="display: block; text-align: center; font-size: .52rem; padding: .1rem;">FW: OFFLINE</span>
             </div>
             <div style="flex: 1;">
-              <span class="pill off" id="gemmaJupyterStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">JUPYTER: OFFLINE</span>
+              <span class="pill off" id="gemmaJupyterStatus" style="display: block; text-align: center; font-size: .52rem; padding: .1rem;">JUPYTER: OFFLINE</span>
             </div>
             <div style="flex: 1;">
-              <span class="pill off" id="gemmaAmdCloudStatus" style="display: block; text-align: center; font-size: .55rem; padding: .15rem;">AMD: OFFLINE</span>
+              <span class="pill off" id="gemmaAmdCloudStatus" style="display: block; text-align: center; font-size: .52rem; padding: .1rem;">AMD: OFFLINE</span>
             </div>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblFwKey">Fireworks API Key</label>
-            <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
+            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblFwKey">Fireworks API Key</label>
+            <input type="password" id="inputFwKey" placeholder="fw_..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;" />
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblFwModel">Gemma Model ID</label>
-            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;">
+            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblFwModel">Gemma Model ID</label>
+            <select id="selectFwModel" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;">
               <option value="accounts/fireworks/models/gemma-4-31b-it">Gemma 4 31B IT</option>
               <option value="accounts/fireworks/models/gemma-2-9b-it">Gemma 2 9B IT</option>
             </select>
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
-            <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
+            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblJupyterUrl">Jupyter vLLM Base URL</label>
+            <input type="text" id="inputJupyterUrl" placeholder="http://192.168.1.X:8000/v1" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;" />
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblJupyterToken">Jupyter Token</label>
-            <input type="password" id="inputJupyterToken" placeholder="token..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;" />
+            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblJupyterToken">Jupyter Token</label>
+            <input type="password" id="inputJupyterToken" placeholder="token..." style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;" />
           </div>
           <div>
-            <label style="display: block; margin-bottom: 0.15rem; font-size: .6rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
-            <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.2rem; font-size: 0.65rem;">
+            <label style="display: block; margin-bottom: 0.1rem; font-size: .58rem;" data-i18n="lblGemmaTarget">Gemma Routing Target</label>
+            <select id="selectGemmaTarget" style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.15rem; font-size: 0.62rem; border-radius: 3px;">
               <option value="auto">Auto-detect (Jupyter > Fireworks)</option>
               <option value="fireworks">Force Fireworks (Option A)</option>
               <option value="jupyter">Force Jupyter Lab (Option B)</option>
             </select>
           </div>
-          <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.3rem; font-size: 0.68rem; margin-top: 0.1rem;" data-i18n="btnSaveSettings">Save Settings</button>
+          <button type="button" id="btnSaveSettings" style="background: var(--amber); color: var(--bg); font-weight: bold; text-align: center; width: 100%; padding: 0.25rem; font-size: 0.64rem; margin-top: 0.1rem;" data-i18n="btnSaveSettings">Save Settings</button>
         </div>
       </div>
 
       <h2 data-i18n="guideTitle">Guía del jurado</h2>
-      <div class="guide" style="margin-bottom: .6rem;">
+      <div class="guide" style="margin-bottom: .5rem; padding: .45rem;">
         <strong><span data-i18n="guideIntro">Sigue estos pasos para evaluar la demo:</span></strong>
-        <ol id="guideSteps">
+        <ol id="guideSteps" style="margin-left: 0.8rem;">
           <li id="step1" data-i18n="step1">Verifica agentes ONLINE (panel derecho)</li>
-          <li id="step2" data-i18n="step2">Ejecuta la demo: Full Auto Demo <em>o</em> un preset (2–6)</li>
+          <li id="step2" data-i18n="step2">Ejecuta la demo: Full Auto Demo o un preset (2–6)</li>
           <li id="step2b" class="alt" data-i18n="step2b">↳ Los presets rellenan el texto y envían solos; no pulses Send</li>
           <li id="step3" data-i18n="step3">Lee el cuadro RESULTADO abajo — ahí está la respuesta final</li>
         </ol>
       </div>
 
       <h2 data-i18n="metricsTitle">Token economics (Track 1)</h2>
-      <div class="card" style="padding: .45rem; margin-bottom: .5rem;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; margin-bottom: 0.2rem;">
+      <div class="card" style="padding: .4rem; margin-bottom: .4rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 0.1rem;">
           <span>Local Ollama: <strong id="tokLocal">0</strong></span>
           <span>Remote: <strong id="tokRemote">0</strong></span>
           <span>Txns: <strong id="txnCount">0</strong></span>
         </div>
-        <div class="bar" style="margin: .2rem 0;"><div class="loc" id="barLocal" style="width:50%"></div><div class="rem" id="barRemote" style="width:50%"></div></div>
+        <div class="bar" style="margin: .15rem 0;"><div class="loc" id="barLocal" style="width:50%"></div><div class="rem" id="barRemote" style="width:50%"></div></div>
       </div>
     </section>
 
     <section class="panel">
-      <!-- PRESET BUTTONS MOVED TO THE TOP OF COPILOT PANEL -->
-      <h2 data-i18n="presetsTitle" style="margin-bottom: 0.35rem;">Presets de prueba (Clic para ejecutar)</h2>
-      <div class="preset-explain" id="presetExplain" style="margin-bottom: .35rem;">
+      <h2 data-i18n="presetsTitle" style="margin-bottom: 0.25rem;">Presets de prueba (Clic para ejecutar)</h2>
+      <div class="preset-explain" id="presetExplain" style="margin-bottom: .3rem; padding: .4rem;">
         <span class="tag" data-i18n="presetTag">Qué hace cada botón</span>
-        <strong id="presetExplainText" data-i18n="presetDefault">Pulsa un preset para ver la explicación.</strong>
+        <strong id="presetExplainText" data-i18n="presetDefault" style="font-size: .64rem;">Pulsa un preset para ver la explicación.</strong>
       </div>
-      <div class="btns" style="margin-bottom: .75rem;">
-        <button type="button" id="btnShowcase" data-preset="showcase" data-i18n="btnShowcase" style="grid-column: span 2; background: var(--teal); color: var(--white); font-weight: bold; text-align: center;">▶ 1. Demo completa automática (3 pasos en vivo)</button>
+      <div class="btns" style="margin-bottom: .6rem;">
+        <button type="button" id="btnShowcase" data-preset="showcase" data-i18n="btnShowcase" style="grid-column: span 2; background: var(--teal); color: var(--white); font-weight: bold; text-align: center; padding: .35rem;">▶ 1. Demo completa automática (3 pasos en vivo)</button>
         <button type="button" class="secondary" data-step="3" data-preset="sentiment" data-msg-es="Analiza el sentimiento del feedback del cliente. Texto: «El técnico de PC Doctor llegó puntual, explicó todo con claridad y dejó mi laptop funcionando perfecta. Muy recomendado.» Responde: POSITIVO, NEGATIVO o NEUTRAL." data-msg-en="Analyze customer feedback sentiment. Text: «The PC Doctor technician arrived on time, explained everything clearly, and left my laptop running perfectly. Highly recommended.» Reply: POSITIVE, NEGATIVE, or NEUTRAL." data-i18n="btnSentiment">2. Sentimiento (0 tokens)</button>
         <button type="button" class="secondary" data-step="3" data-preset="quote" data-msg-es="Cotizar diagnóstico en sitio e instalación de SSD 1TB para cliente PC Doctor" data-msg-en="Quote onsite diagnosis and 1TB SSD installation for PC Doctor customer" data-i18n="btnQuote">3. Cotización A2A (:8221)</button>
         <button type="button" class="secondary" data-step="3" data-preset="sre" data-msg-es="Health check del stack ralfiia y plan de remediación" data-msg-en="Health check ralfiia stack and remediation plan" data-i18n="btnSre">4. Health check SRE (:8222)</button>
@@ -218,54 +222,52 @@
       </div>
 
       <h2 data-i18n="copilotTitle">Copilot interactivo</h2>
-      <div id="scenarioDetail" data-i18n="scenarioHint" style="padding: .35rem; font-size: .62rem; margin-bottom: .35rem;">Elige un escenario arriba. El log en vivo (derecha) muestra routing, agente y Mongo.</div>
-      <textarea id="input" data-i18n-placeholder="inputPh" placeholder="Escribe consulta ops, cotización o análisis…" style="min-height: 48px;"></textarea>
-      <div style="margin-top:.35rem;display:flex;gap:.35rem;flex-wrap:wrap">
-        <button type="button" id="send" style="flex:1; text-align: center;" data-i18n="sendBtn">Enviar → Root Agent</button>
+      <div id="scenarioDetail" data-i18n="scenarioHint" style="padding: .3rem; font-size: .6rem; margin-bottom: .3rem; border-radius: 4px;">Elige un escenario abajo. El log en vivo (derecha) muestra routing, agente y Mongo.</div>
+      <textarea id="input" data-i18n-placeholder="inputPh" placeholder="Escribe consulta ops, cotización o análisis…" style="min-height: 44px;"></textarea>
+      <div style="margin-top:.3rem;display:flex;gap:.35rem;flex-wrap:wrap">
+        <button type="button" id="send" style="flex:1; text-align: center; padding: .35rem;" data-i18n="sendBtn">Enviar → Root Agent</button>
       </div>
-      <div class="answer-box" id="answer" data-i18n="answerPh" style="min-height: 80px; max-height: 130px; margin-top: .45rem;">La respuesta aparecerá aquí…</div>
-      <p style="font-size:.58rem;color:var(--dim); margin-top: .25rem;" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo de PC Doctor.</p>
-    </section>tor = tu marca real; el “cliente” no se busca en Mongo en esta demo.</p>
+      <div class="answer-box" id="answer" data-i18n="answerPh" style="min-height: 70px; max-height: 120px; margin-top: .4rem; font-size: .68rem;">La respuesta aparecerá aquí…</div>
+      <p style="font-size:.56rem;color:var(--dim); margin-top: .2rem;" data-i18n="fwNote">* Los presets 2–4 usan texto de ejemplo de PC Doctor.</p>
     </section>
 
     <section class="panel panel-right">
       <div class="log-panel live" id="logPanel">
-        <div class="log-header" style="display:flex;justify-content:space-between;align-items:center;padding:.55rem .65rem 0">
-          <h2><span class="log-dot" id="logDot"></span><span data-i18n="logTitle">Terminal en vivo</span></h2>
-          <button type="button" class="secondary" id="clearLog" style="padding:.25rem .45rem;font-size:.58rem" data-i18n="clearLog">Limpiar</button>
+        <div class="log-header" style="display:flex;justify-content:space-between;align-items:center;padding:.35rem .45rem 0">
+          <h2><span class="log-dot" id="logDot"></span><span data-i18n="logTitle" style="font-size: .62rem;">Terminal en vivo</span></h2>
+          <button type="button" class="secondary" id="clearLog" style="padding:.15rem .35rem;font-size:.56rem;border-radius:3px;" data-i18n="clearLog">Limpiar</button>
         </div>
-        <div class="terminal" id="terminal"></div>
+        <div class="terminal" id="terminal" style="height: 160px; padding: .35rem;"></div>
       </div>
-      <h2 data-i18n="agentsTitle">Agentes A2A (hackathon)</h2>
+      <h2 data-i18n="agentsTitle" style="margin-top: 0.4rem;">Agentes A2A (hackathon)</h2>
       <div id="agentCards"></div>
-      <h2 style="margin-top:1rem" data-i18n="amdTitle">Plataforma AMD</h2>
+      <h2 style="margin-top:0.4rem" data-i18n="amdTitle">Plataforma AMD</h2>
       <div class="card"><strong data-i18n="cardOlTitle">Ollama local</strong><br><span id="olStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardOlSub">Track 1 · 0 tokens remotos</span></div>
-      <div class="card"><strong data-i18n="cardFwTitle">Fireworks (GPUs AMD MI300X)</strong><br><span id="fwStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardFwSub">DeepSeek v4 Pro · tareas complejas</span></div>
-      <div class="card"><strong data-i18n="cardAmdTitle">Nodo AMD local (.5)</strong><br><span id="amdNodeStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardAmdSub">Ollama en Ryzen .5 · Track 1 · 0 tokens nube</span></div>
-      <h2 style="margin-top:1rem" data-i18n="stackTitle">Opcional PC Doctor</h2>
-      <div class="card"><strong data-i18n="cardSqTitle">Smart Quoter :2026</strong><br><span id="sqStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardSqSub">Producto real — no requerido para demo A2A</span></div>
-      <div class="card"><strong data-i18n="cardMongoTitle">Mongo</strong><br><span id="mongoStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardMongoSub">amd_hybrid_ops_* · seed PC Doctor</span></div>
+      <div class="card"><strong data-i18n="cardFwTitle">Fireworks (GPUs AMD)</strong><br><span id="fwStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardFwSub">DeepSeek v4 Pro · tareas complejas</span></div>
+      <div class="card"><strong data-i18n="cardAmdTitle">Nodo AMD local (.5)</strong><br><span id="amdNodeStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardAmdSub">Ollama en Ryzen .5 · Track 1</span></div>
+      <h2 style="margin-top:0.4rem" data-i18n="stackTitle">Opcional PC Doctor</h2>
+      <div class="card"><strong data-i18n="cardSqTitle">Smart Quoter :2026</strong><br><span id="sqStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardSqSub">Producto real opcional</span></div>
+      <div class="card"><strong data-i18n="cardMongoTitle">Mongo</strong><br><span id="mongoStatus" class="bad">…</span><br><span style="font-size:.6rem;color:var(--dim)" data-i18n="cardMongoSub">pcdoctor_swarm</span></div>
     </section>
   </main>
-  <footer style="padding:.75rem 1rem;border-top:1px solid var(--border);font-size:.62rem;color:var(--dim)">
+  <footer style="padding:.5rem 1.25rem;border-top:1px solid var(--border);font-size:.58rem;color:var(--dim);background:var(--panel);">
       <span data-i18n="footer">Código abierto en GitHub · Smart Quoter :2026 · Panel :2002 · Mongo pcdoctor_swarm</span>
   </footer>
   <script>
     const I18N = {
       es: {
-        subtitle: "AMD ACT II · Track 3 Unicorn + Track 1 Router · A2A Mesh",
+        subtitle: "AMD ACT II · Track 3 + Track 1 Router · A2A Mesh",
         init: "Conectando al backend…",
-        heroTitle: "Qué hace RalfIA Hybrid Ops (en 30 segundos)",
-        heroBody: "Copiloto de operaciones con varios agentes. Escribes una tarea → el gateway enruta a Ollama en el servidor AMD local (.5, costo 0), a Fireworks (DeepSeek en GPU AMD), o a agentes A2A (cotizador CrewAI / watchdog LangGraph). Cada decisión se guarda en Mongo.",
+        heroTitle: "RalfIIA Control Plane",
+        heroBody: "Copiloto multi-agente. Tareas simples → Ollama en el servidor AMD local (.5, costo 0), tareas complejas → Fireworks (DeepSeek en GPU AMD), o agentes A2A. Decisiones registradas en Mongo.",
         heroFlow: "Usuario → Gateway :8220 → [Ollama .5 | Fireworks | Agent :8221/:8222] → Mongo",
         guideTitle: "Guía del jurado",
         guideIntro: "Sigue estos pasos para evaluar la demo:",
         step1: "Verifica agentes ONLINE (panel derecho)",
-        step2: "Ejecuta la demo: Full Auto Demo o un preset (2–5) — elige uno, no los dos",
-        step2b: "Los presets rellenan el texto y envían solos; no pulses Send otra vez",
+        step2: "Ejecuta la demo: Full Auto Demo o un preset (2–6)",
+        step2b: "Los presets rellenan el texto y envían solos; no pulses Send",
         step3: "Lee el cuadro RESULTADO — ahí está la respuesta final",
-        stepGemma: "↳ Nota: Si deseas probar Gemma local y el servidor está apagado, pulsa '🔔 NOTIFICAR GEMMA GPU' en la cabecera para alertar al equipo.",
-        btnNotifyGemma: "🔔 NOTIFICAR GEMMA GPU",
+        btnNotifyGemma: "🔔 NOTIFY GEMMA GPU",
         gemmaPanelTitle: "Backends Gemma GPU (Interno)",
         gemmaSettingsTitle: "⚙️ Configuración Gemma (Interno)",
         lblFwKey: "Fireworks API Key (Opcional)",
@@ -275,10 +277,10 @@
         lblGemmaTarget: "Destino de Ruteo de Gemma",
         btnSaveSettings: "Guardar Configuración",
         setupGuideTitle: "📖 Guía de Configuración",
-        gemmaFwDesc: "Gemma-4-31b-it en Fireworks (Deploy on Demand)",
-        gemmaJupyterDesc: "Servidor Jupyter temporal en Radeon Cloud",
-        gemmaAmdCloudDesc: "Droplet MI300X vLLM ($100 créditos)",
-        btnGemmaPreset: "6. Tarea compleja (Gemma en GPU AMD)",
+        gemmaFwDesc: "Gemma en Fireworks",
+        gemmaJupyterDesc: "Jupyter en Radeon Cloud",
+        gemmaAmdCloudDesc: "vLLM Droplet MI300X",
+        btnGemmaPreset: "6. Gemma (Opción A/B)",
         btnGemmaPresetTooltip: "Gemma debe estar activa en Fireworks, Jupyter o AMD Developer Cloud",
         resultLabel: "RESULTADO",
         metricsTitle: "Token economics (Track 1)",
@@ -290,13 +292,13 @@
         inputPh: "Escribe consulta ops, cotización o análisis…",
         sendBtn: "Enviar → Root Agent",
         answerPh: "La respuesta aparecerá aquí…",
-        presetsTitle: "Presets de prueba",
+        presetsTitle: "Presets de prueba (Clic para ejecutar)",
         btnShowcase: "▶ 1. Demo completa automática (3 pasos en vivo)",
-        btnSentiment: "2. Análisis de sentimiento (Ollama local, 0 tokens cloud)",
-        btnQuote: "3. Cotización demo (agente A2A :8221)",
-        btnSre: "4. Health check SRE (agente A2A :8222)",
-        btnFw: "5. Tarea compleja (Fireworks DeepSeek en GPU AMD)",
-        fwNote: "* Presets 2–4: texto de ejemplo. PC Doctor = tu marca; no busca un cliente real en Mongo en esta demo.",
+        btnSentiment: "2. Sentimiento (0 tokens)",
+        btnQuote: "3. Cotización A2A (:8221)",
+        btnSre: "4. Health check SRE (:8222)",
+        btnFw: "5. DeepSeek (Fireworks)",
+        fwNote: "* Los presets 2–4 usan texto de ejemplo de PC Doctor.",
         presetTag: "Qué hace cada botón",
         presetDefault: "Pulsa un preset para ver la explicación.",
         agentsTitle: "Agentes A2A (hackathon)",
@@ -306,15 +308,9 @@
         stackTitle: "Opcional PC Doctor",
         cardOlTitle: "Ollama local",
         cardOlSub: "Track 1 · 0 tokens remotos",
-        cardFwTitle: "Fireworks (GPUs AMD MI300X)",
+        cardFwTitle: "Fireworks (GPUs AMD)",
         cardFwSub: "DeepSeek v4 Pro · tareas complejas",
         cardAmdTitle: "Nodo AMD local (.5)",
-        cardAmdSub: "Ollama en Ryzen .5 · Track 1 · 0 tokens nube",
-        cardSqTitle: "Smart Quoter :2026",
-        cardSqSub: "Producto real — no requerido para demo A2A",
-        cardMongoTitle: "Mongo",
-        cardMongoSub: "amd_hybrid_ops_* · seed PC Doctor",
-        fwPending: "PENDIENTE — falta FIREWORKS_API_KEY en .env",
         fwOkLbl: "CONECTADO · DeepSeek v4 Pro (Fireworks)",
         amdNodeOk: "CONECTADO · Ollama 192.168.1.5:11434",
         amdNodeBad: "OFFLINE — nodo AMD .5 no responde",
