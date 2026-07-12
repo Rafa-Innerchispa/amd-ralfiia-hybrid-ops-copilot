@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import uuid
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -83,17 +84,19 @@ def perform_fastrag(prompt: str) -> str:
 def load_local_model() -> bool:
     global tokenizer, model
     try:
-        print("Loading local Qwen model on CPU...", file=sys.stderr)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        print("Loading local Qwen model on CPU (bfloat16)...", file=sys.stderr)
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
-            torch_dtype=torch.float32,
-            device_map="cpu"
+            torch_dtype=torch.bfloat16,  # 1.0 GB RAM footprint
+            device_map="cpu",
+            local_files_only=True
         )
         print("Model loaded successfully!", file=sys.stderr)
         return True
     except Exception as exc:
         print(f"Error loading local model: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return False
 
 
@@ -184,6 +187,7 @@ async def process_task(client: httpx.AsyncClient, item: dict[str, Any]) -> dict[
             answer = run_local_qwen(enriched_prompt)
         except Exception as exc:
             print(f"Local Qwen inference failed: {exc}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
             answer = None
 
     if answer is None:

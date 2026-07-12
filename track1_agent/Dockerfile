@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download and cache Qwen model weights
 COPY track1_agent/download_model.py .
-RUN python download_model.py
+RUN python download_model.py && chmod -R 777 /app/hf_cache
 
 COPY track1_agent/agent_messages.json .
 COPY track1_agent/run_harness.py .
