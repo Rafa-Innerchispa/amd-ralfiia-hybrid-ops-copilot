@@ -27,6 +27,4 @@ ENV PYTHONPATH=/app \
     HARNESS_OUTPUT_PATH=/output/results.json \
     ZERO_TOKEN_MODE=0
 
-USER nobody
-
 ENTRYPOINT ["python", "run_harness.py"]
