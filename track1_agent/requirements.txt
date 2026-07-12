@@ -2,3 +2,4 @@
 httpx
 transformers
 torch
+accelerate

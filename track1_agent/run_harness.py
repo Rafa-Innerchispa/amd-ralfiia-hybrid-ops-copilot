@@ -89,7 +89,6 @@ def load_local_model() -> bool:
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
             torch_dtype=torch.bfloat16,  # 1.0 GB RAM footprint
-            device_map="cpu",
             local_files_only=True
         )
         print("Model loaded successfully!", file=sys.stderr)
