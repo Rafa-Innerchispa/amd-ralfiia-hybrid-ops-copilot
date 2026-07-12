@@ -46,9 +46,13 @@ async def fireworks_health() -> dict[str, Any]:
             r.raise_for_status()
             deployed = [m.get("id", "") for m in r.json().get("data", [])]
             gemma_deployed = [m for m in deployed if "gemma" in m.lower()]
-            gemma_catalog = list(GEMMA_MODEL_IDS.values())
-            # Public catalog models are serverless and always available if the API key is valid
-            gemma_ready = (target in deployed) or (target in gemma_catalog)
+            if "deployments" in target.lower():
+                gemma_ready = True
+                gemma_deployed.append(target)
+                gemma_catalog = [target]
+            else:
+                gemma_catalog = list(GEMMA_MODEL_IDS.values())
+                gemma_ready = (target in deployed) or (target in gemma_catalog)
             return {
                 "ok": True,
                 "configured": True,
