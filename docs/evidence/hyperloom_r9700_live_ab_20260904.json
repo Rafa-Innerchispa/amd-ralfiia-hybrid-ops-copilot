@@ -1,0 +1,60 @@
+{
+  "schema_version": "inneros.hyperloom_r9700.live_ab.v1",
+  "date": "2026-09-04",
+  "status": "PASS",
+  "truth_boundary": "Experimental Hyperloom R9700 support. This is not official AMD support and does not yet prove Magpie/TraceLens/kernel optimization on RDNA4.",
+  "upstream_hyperloom_commit": "9ae79d6a8c9fec7ed041735e70fb19ef39850813",
+  "gpu": {
+    "name": "AMD Radeon AI PRO R9700",
+    "gfx": "gfx1201",
+    "compute_units": 64,
+    "vram_total_bytes": 34208743424
+  },
+  "runtime": {
+    "container": "inneros-vllm-canary-rocm10",
+    "rocm_container_image": "rocm/vllm:rocm10.0.0_ubuntu24.04_py3.14_pytorch_2.12.0_vllm_0.27.0",
+    "torch": "2.12.0+rocm10.0.0",
+    "vllm": "0.27.1.dev5+gf46a9dfe2.d20260827.rocm100",
+    "model": "QuantTrio/Qwen3-Coder-30B-A3B-Instruct-AWQ",
+    "endpoint": "http://127.0.0.1:8000"
+  },
+  "hyperloom": {
+    "patched_gpu_type": "r9700",
+    "patched_dispatch_identity": ["gfx1201", 64],
+    "backend": "bypass",
+    "preflight": "PASS",
+    "autodetect": "PASS"
+  },
+  "workload": {
+    "input_tokens_per_request": 32,
+    "output_tokens_per_request": 32,
+    "random_range_ratio": 1.0,
+    "run_eval": false
+  },
+  "baseline": {
+    "concurrency": 1,
+    "success": true,
+    "completed_requests": 10,
+    "request_throughput_req_s": 0.6811022148637256,
+    "output_throughput_tok_s": 21.79527087563922,
+    "total_token_throughput_tok_s": 43.59054175127844,
+    "mean_ttft_ms": 68.47182940400671,
+    "mean_tpot_ms": 45.1399649967507,
+    "mean_e2el_ms": 1467.8107443032786
+  },
+  "candidate": {
+    "concurrency": 2,
+    "success": true,
+    "completed_requests": 20,
+    "request_throughput_req_s": 1.143522484230312,
+    "output_throughput_tok_s": 36.592719495369984,
+    "total_token_throughput_tok_s": 73.18543899073997,
+    "mean_ttft_ms": 121.06439904891886,
+    "mean_tpot_ms": 52.43144405479054,
+    "mean_e2el_ms": 1746.4391647474258
+  },
+  "comparison": {
+    "output_throughput_gain_pct": 67.89293284842822,
+    "interpretation": "Throughput increased with concurrency 2, while latency also increased. This is a workload/concurrency tuning result, not a claim of 67.89% universal speedup or a kernel optimization."
+  }
+}
