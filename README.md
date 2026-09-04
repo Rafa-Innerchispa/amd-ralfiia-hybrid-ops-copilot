@@ -1,46 +1,51 @@
-# RalfIIA Hybrid Ops Copilot — AMD ACT II Track 3
+# InnerOS Sovereign AI Fabric — Hyperloom on Radeon AI PRO R9700
 
-Multi-agent ops copilot (A2A) for AMD Developer Hackathon ACT II — Track 3 Unicorn + hybrid Track 1 router.
+Experimental AMD Lab Program Challenge 1 project based on the existing `amd-ralfiia-hybrid-ops-copilot` platform.
 
-## Quick start
+## Challenge 1 focus
+
+**Goal:** explore and implement a truthful experimental compatibility layer between Hyperloom and the AMD Radeon AI PRO R9700 (`gfx1201`).
+
+Current Hyperloom validation targets AMD Instinct runner families. This project does **not** claim official R9700 support. Instead, it separates:
+
+- architecture-neutral optimization workflow components that already work locally,
+- components that can be adapted safely,
+- Instinct/CDNA-specific paths that must remain blocked,
+- changes that would require upstream Hyperloom support.
+
+See [`docs/HYPERLOOM_R9700.md`](docs/HYPERLOOM_R9700.md).
+
+## Verified local AMD stack
+
+- AMD Radeon AI PRO R9700, 32 GB VRAM
+- `gfx1201` / RDNA4
+- ROCm 10 canary runtime
+- vLLM local serving
+- Qwen3-Coder local model
+- MCP/A2A orchestration through InnerOS
+- DigitalOcean AMD Instinct integration retained as an optional reference path, with no promotional credits assumed and no cloud spend required for Challenge 1
+
+## Experimental compatibility adapter
+
+`backend/app/integrations/hyperloom_r9700.py` provides:
+
+- R9700 / `gfx1201` detection
+- capability classification: `works`, `adapted`, `blocked`, `upstream_required`
+- architecture-neutral preflight and benchmark plans
+- explicit blocks for MI30x-specific runner scripts and `gfx942/gfx950` kernel artifacts
+- conservative Hyperloom `session_breakdown` evidence parsing
+- separation between `experimental-r9700` local runner and `mi325x` reference runner
+
+Run the focused tests:
 
 ```bash
-git clone https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot.git
-cd amd-ralfiia-hybrid-ops-copilot
-cp .env.example .env   # edit locally — never commit secrets
-./scripts/start_all.sh
+python3 -m pytest tests/test_hyperloom_r9700.py -q
 ```
 
-**Console:** http://localhost:8220/console/
+## Original platform
 
-| Servicio | Puerto | Stack |
-|----------|--------|-------|
-| `root-gateway` | 8220 | FastAPI + Google ADK patterns (Session, RemoteAgentConnections, send_task) |
-| `agent-smart-quoter` | 8221 | CrewAI + Hybrid Ollama/Fireworks |
-| `agent-watchdog` | 8222 | LangGraph ReAct (Reason→Act→Observe) |
-| `ui` | 5120 | Nginx dashboard grayscale |
+The repository originated as the RalphiIA Hybrid Ops Copilot for AMD ACT II and already includes multi-agent operations, A2A communication, hybrid runtime integrations, Smart Quoter and Watchdog agents.
 
-## Arranque (sin Fireworks)
+## Important truthfulness boundary
 
-```bash
-cd /home/rlopez/projects/amd-ralfiia-hybrid-ops-copilot
-./scripts/start_all.sh
-```
-
-- **Console local:** http://192.168.1.4:8220/console/
-- **Console jurado:** https://sworn-profusely-alongside.ngrok-free.dev/amd-ops/
-- **API jurado:** https://sworn-profusely-alongside.ngrok-free.dev/amd-ops-api/health
-
-La consola incluye demo interactiva, botones Track 1, chat A2A y métricas en vivo.
-
-## Criterios Track 3 (Unicorn)
-
-- Creatividad: ops copilot real sobre ecosistema RalfIA (PC Doctor, MCP, Mongo)
-- AMD platforms: Fireworks Gemma-2 on AMD + Ollama local + Developer Cloud ready
-- Completitud: 4 containers, A2A agent cards, live UI, Mongo seed
-- Product/market: Smart Quoter + SRE Watchdog como workers interoperables
-
-## Handoff / continuar en otro IDE
-
-**Historia completa del hackathon AMD:** [`docs/HANDOFF_COMPLETO.md`](docs/HANDOFF_COMPLETO.md)
-
+This repository must never represent the experimental R9700 adapter as official Hyperloom support unless AMD adds `gfx1201` upstream. Performance results from MI325X or other Instinct GPUs must be re-benchmarked locally before they are claimed for R9700.
