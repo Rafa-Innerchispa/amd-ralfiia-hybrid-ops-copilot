@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hyperloom on R9700 — AMD Lab Challenge 1</title>
+<style>
+:root{--bg:#070707;--panel:#111;--border:#292929;--text:#eee;--muted:#999;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--info:#60a5fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,system-ui,sans-serif}header,main,footer{max-width:1180px;margin:auto;padding:24px}header{padding-top:44px}h1{font-size:clamp(30px,5vw,58px);line-height:1;margin:10px 0 18px}h2{font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 14px}.kicker{color:var(--info);font-size:12px;letter-spacing:.14em;text-transform:uppercase}.lead{max-width:850px;color:#c8c8c8;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.grid{grid-template-columns:1fr}}.card{border:1px solid var(--border);background:var(--panel);padding:18px}.v{font-size:28px;font-weight:650}.l{color:var(--muted);font-size:12px;margin-top:5px}.section{border-top:1px solid var(--border);padding:26px 0}.matrix{display:grid;grid-template-columns:1.1fr .55fr 2fr;border:1px solid var(--border)}.matrix>div{padding:12px;border-bottom:1px solid var(--border)}.matrix>div:nth-child(3n+2){font-weight:700}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.info{color:var(--info)}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media(max-width:800px){.steps{grid-template-columns:1fr}}.step{border:1px solid var(--border);padding:16px;background:#0b0b0b}.tag{display:inline-block;padding:4px 8px;border:1px solid var(--border);font-size:11px;margin:4px 4px 0 0}.pending{border-color:var(--warn);color:var(--warn)}a{color:var(--info)}.truth{border:1px solid var(--warn);background:#151109;padding:16px;line-height:1.55}.mono{white-space:pre-wrap;background:#050505;border:1px solid var(--border);padding:14px;color:#bbb;font-family:ui-monospace,monospace;font-size:12px}footer{color:var(--muted);font-size:12px}</style>
+</head>
+<body>
+<header>
+<div class="kicker">AMD Lab Program · Challenge 1 · Builder</div>
+<h1>Hyperloom on Radeon AI PRO R9700</h1>
+<p class="lead">Experimental RDNA4 compatibility work for AMD Hyperloom. The R9700 runs ROCm 10 and local vLLM today, but current Hyperloom releases expose official runner types for Instinct GPUs. This project adds a truthful R9700 compatibility path instead of pretending the card is an MI300X.</p>
+<div class="grid">
+<div class="card"><div class="v">R9700</div><div class="l">AMD Radeon AI PRO</div></div>
+<div class="card"><div class="v">32 GB</div><div class="l">VRAM class</div></div>
+<div class="card"><div class="v">gfx1201</div><div class="l">ROCm target</div></div>
+<div class="card"><div class="v">64 CU</div><div class="l">RDNA4 compute units</div></div>
+</div>
+<div class="truth"><strong>Current truth:</strong> the compatibility layer, feature gates, benchmark harness and comparison tooling are implemented and tested. <strong>Full Hyperloom execution on R9700 is not yet claimed</strong> until the patched runner completes a real baseline on the GPU.</div>
+</header>
+<main>
+<section class="section"><h2>Compatibility matrix</h2><div class="matrix">
+<div>ROCm 10 + R9700</div><div class="ok">WORKS</div><div>Verified local runtime on <code>gfx1201</code>.</div>
+<div>vLLM local baseline</div><div class="ok">WORKS</div><div>R9700 is serving Qwen3-Coder through a ROCm vLLM build.</div>
+<div>Hyperloom orchestration concepts</div><div class="warn">ADAPTED</div><div>Architecture-neutral optimize → benchmark → validate loop is reusable.</div>
+<div>Hyperloom official R9700 runner</div><div class="bad">UPSTREAM</div><div>Current accepted GPU types do not include R9700.</div>
+<div>Instinct compiled kernels</div><div class="bad">BLOCKED</div><div><code>gfx942/gfx950</code> artifacts must not be reused on <code>gfx1201</code>.</div>
+<div>Baseline → candidate comparison</div><div class="info">READY</div><div>Harness is implemented; live evidence awaits the patched runner/peer execution path.</div>
+</div></section>
+<section class="section"><h2>Port architecture</h2><div class="steps">
+<div class="step"><strong>1 · Identity</strong><p>Add <code>r9700 → gfx1201, 64 CU</code> to Hyperloom's central GPU identity path.</p></div>
+<div class="step"><strong>2 · Runner</strong><p>Use a dedicated <code>r9700</code> vLLM benchmark runner or explicit custom benchmark script.</p></div>
+<div class="step"><strong>3 · Feature gates</strong><p>Reuse serving-level optimization. Disable CDNA-specific paths until revalidated.</p></div>
+</div></section>
+<section class="section"><h2>Evidence chain</h2><div class="mono">Hardware/runtime → R9700 + gfx1201 + ROCm 10 + vLLM
+        ↓
+Compatibility adapter → WORKS / ADAPTED / BLOCKED / UPSTREAM_REQUIRED
+        ↓
+Baseline JSON → candidate JSON → comparison JSON
+        ↓
+Patched Hyperloom preflight → baseline → explore/rebenchmark
+        ↓
+Session artifacts + Git commit + tests + PR</div>
+<p><span class="tag">PR #2</span><span class="tag">Issue #1</span><span class="tag">public GitHub</span><span class="tag">no promotional cloud credit assumed</span></p>
+</section>
+<section class="section"><h2>Live completion gates</h2><div class="steps">
+<div class="step"><strong class="pending">PENDING</strong><p>Capture real baseline JSON on the R9700.</p></div>
+<div class="step"><strong class="pending">PENDING</strong><p>Run one architecture-neutral candidate with identical workload.</p></div>
+<div class="step"><strong class="pending">PENDING</strong><p>Attempt patched Hyperloom R9700 preflight and record success or exact blocker.</p></div>
+</div></section>
+<section class="section"><h2>Project evidence</h2><p><a href="https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot" target="_blank" rel="noopener">GitHub repository</a> · <a href="https://github.com/Rafa-Innerchispa/amd-ralfiia-hybrid-ops-copilot/pull/2" target="_blank" rel="noopener">Challenge 1 PR #2</a></p><p>See <code>docs/EVIDENCE_INDEX.md</code>, <code>docs/BUILDER_SUBMISSION.md</code>, and <code>docs/upstream/HYPERLOOM_R9700_PATCH_PLAN.md</code>.</p></section>
+</main>
+<footer>InnerChispa · InnerOS Sovereign AI Fabric · Challenge evidence is intentionally separated into verified, implemented, measured and pending states.</footer>
+</body></html>
